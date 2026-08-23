@@ -1,6 +1,6 @@
 # RBZ PC Health bootstrapper
 [CmdletBinding()]
-param([string]$ConfigUrl = 'https://raw.githubusercontent.com/RBZTechSolutions/RBZ-PC-Health/main/Config/settings.json')
+param([string]$ConfigUrl = 'https://raw.githubusercontent.com/rbznet/RBZTechSolutions/main/Config/settings.json')
 $ErrorActionPreference='Stop'
 [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12
 
