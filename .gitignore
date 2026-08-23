@@ -1,0 +1,17 @@
+# Customer reports
+Reports/*
+!Reports/.gitkeep
+
+# Build output
+dist/
+
+# Logs/temp
+*.log
+*.tmp
+
+# Secrets
+.env
+*.key
+*.pfx
+*.p12
+secrets.json
