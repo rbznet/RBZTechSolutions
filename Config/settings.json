@@ -1,0 +1,51 @@
+{
+  "app": {
+    "name": "RBZ PC Health",
+    "version": "0.1.0",
+    "company": "RBZ Tech Solutions Ltd",
+    "reportPrefix": "RBZ-PC-Health",
+    "requireAdmin": true,
+    "minimumPowerShellMajor": 5
+  },
+  "paths": {
+    "reports": ".\\Reports",
+    "assets": ".\\Assets",
+    "modules": ".\\Modules",
+    "logo": ".\\Assets\\rbz-logo.png"
+  },
+  "github": {
+    "owner": "rbznet",
+    "repo": "RBZTechSolutions",
+    "branch": "main",
+    "releaseApi": "https://api.github.com/repos/rbznet/RBZTechSolutions/releases/latest",
+    "rawBase": "https://raw.githubusercontent.com/rbznet/RBZTechSolutions/main"
+  }
+  "bootstrap": {
+    "tempRoot": "%TEMP%\\RBZ-PC-Health",
+    "packageAssetPattern": "RBZ-PC-Health-*.zip",
+    "hashAssetPattern": "RBZ-PC-Health-*.sha256",
+    "entryPoint": "RBZHealth.ps1",
+    "cleanupAfterExit": false
+  },
+  "scan": {
+    "batteryReport": true,
+    "defender": true,
+    "windowsUpdateService": true,
+    "startupItems": true,
+    "networkTests": true,
+    "storageHealth": true,
+    "eventLogSummary": true,
+    "installedSoftware": true
+  },
+  "network": {
+    "internetTestHost": "1.1.1.1",
+    "dnsTestName": "www.microsoft.com"
+  },
+  "thresholds": {
+    "systemDriveFreePercentWarning": 20,
+    "systemDriveFreePercentCritical": 10,
+    "memoryGBWarning": 8,
+    "batteryHealthWarningPercent": 70,
+    "uptimeDaysWarning": 14
+  }
+}
