@@ -35,7 +35,7 @@ Edit `Config/settings.json`. Paths, GitHub URLs, thresholds, network targets, re
 After you create the repository and first release:
 
 ```powershell
-irm https://raw.githubusercontent.com/RBZTechSolutions/RBZ-PC-Health/main/bootstrap.ps1 | iex
+irm https://raw.githubusercontent.com/rbznet/RBZTechSolutions/main/bootstrap.ps1 | iex
 ```
 
 The repository owner/name and URLs in the supplied configuration are placeholders until your real GitHub organisation/repository names are confirmed.
