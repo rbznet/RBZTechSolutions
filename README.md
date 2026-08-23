@@ -38,7 +38,7 @@ After you create the repository and first release:
 irm https://raw.githubusercontent.com/rbznet/RBZTechSolutions/main/bootstrap.ps1 | iex
 ```
 
-The repository owner/name and URLs in the supplied configuration are placeholders until your real GitHub organisation/repository names are confirmed.
+The bootstrapper and configuration are configured for the rbznet/RBZTechSolutions repository.
 
 ## Reports
 Each scan can produce:
