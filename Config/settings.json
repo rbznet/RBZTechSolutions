@@ -19,7 +19,7 @@
     "branch": "main",
     "releaseApi": "https://api.github.com/repos/rbznet/RBZTechSolutions/releases/latest",
     "rawBase": "https://raw.githubusercontent.com/rbznet/RBZTechSolutions/main"
-  }
+  },
   "bootstrap": {
     "tempRoot": "%TEMP%\\RBZ-PC-Health",
     "packageAssetPattern": "RBZ-PC-Health-*.zip",
