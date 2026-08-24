@@ -159,3 +159,27 @@ The workflow is now:
    - Cancel Repair
 
 This avoids false disabled-state detection on systems where VSS/shadow-storage state does not accurately reflect System Restore capability.
+
+
+## RC4 correction
+
+Removed the `Get-Command Checkpoint-Computer` availability pre-check.
+
+RBZ PC Health now directly attempts:
+
+```powershell
+Checkpoint-Computer
+```
+
+inside the repair workflow and treats the actual command result as authoritative.
+
+The workflow is now:
+
+1. Capture existing restore-point sequence numbers.
+2. Attempt `Checkpoint-Computer`.
+3. Read restore points again.
+4. Verify a new matching RBZ restore point exists.
+5. Proceed with the Medium-risk repair only when verified.
+6. If the actual creation/verification fails, offer retry/enable, skip, or cancel.
+
+This avoids false failures caused by command discovery behaving differently inside the application execution context.

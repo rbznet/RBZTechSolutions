@@ -140,15 +140,6 @@ function New-RBZRestorePoint {
     if([string]::IsNullOrWhiteSpace($description)){$description='RBZ PC Health pre-repair'}
 
     try {
-        if(-not(Get-Command Checkpoint-Computer -ErrorAction SilentlyContinue)){
-            return [pscustomobject]@{
-                Success=$false
-                Verified=$false
-                FailureType='CommandUnavailable'
-                Summary='System Restore checkpoint command is unavailable.'
-                Details='Checkpoint-Computer was not found.'
-            }
-        }
 
         $before=@()
         try {
