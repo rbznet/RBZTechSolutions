@@ -146,7 +146,8 @@ if($Customer){$CustomerBox.Text=$Customer}
 $VersionText.Text="$($Config.app.productSubtitle) | v$($Config.app.version)"
 $DeviceText.Text="$env:COMPUTERNAME | $env:USERNAME"
 $script:Findings=$null
-$script:ServiceLog=[System.Collections.Generic.List[object]]::new()`n$script:ServiceVerificationRows=[System.Collections.Generic.List[object]]::new()
+$script:ServiceLog=[System.Collections.Generic.List[object]]::new()
+$script:ServiceVerificationRows=[System.Collections.Generic.List[object]]::new()
 $script:Actions=@(Get-RBZServiceActions -Config $Config)
 $ActionGrid.ItemsSource=$script:Actions
 $script:ScanHistory=[System.Collections.Generic.List[object]]::new()
