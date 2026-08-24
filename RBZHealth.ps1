@@ -76,7 +76,7 @@ Add-Type -AssemblyName PresentationFramework
     <Grid>
       <StackPanel>
         <TextBlock Text="RBZ PC Health" Foreground="White" FontSize="28" FontWeight="Bold"/>
-        <TextBlock Text="Technician Diagnostic Suite • v0.2.0" Foreground="#CBD5E1" FontSize="13" Margin="0,4,0,0"/>
+        <TextBlock Text="Technician Diagnostic Suite | v0.2.1" Foreground="#CBD5E1" FontSize="13" Margin="0,4,0,0"/>
       </StackPanel>
       <TextBlock Name="DeviceText" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="#E5E7EB" FontSize="14"/>
     </Grid>
@@ -190,14 +190,14 @@ $detailSummary=$window.FindName('DetailSummary')
 $detailBody=$window.FindName('DetailBody')
 $detailRecommendation=$window.FindName('DetailRecommendation')
 
-$deviceText.Text="$env:COMPUTERNAME • $env:USERNAME"
+$deviceText.Text="$env:COMPUTERNAME | $env:USERNAME"
 $script:Findings=$null
 
 function Show-RBZDetail {
     param($Finding)
     if($null -eq $Finding){return}
     $detailTitle.Text=$Finding.Name
-    $detailStatus.Text="$($Finding.Category) • $($Finding.Status)"
+    $detailStatus.Text="$($Finding.Category) | $($Finding.Status)"
     $detailSummary.Text=$Finding.Summary
     $detailBody.Text=$(if([string]::IsNullOrWhiteSpace([string]$Finding.Details)){'No additional technical detail was returned.'}else{$Finding.Details})
     $detailRecommendation.Text=$(if([string]::IsNullOrWhiteSpace([string]$Finding.Recommendation)){'No action required.'}else{$Finding.Recommendation})
@@ -264,3 +264,4 @@ $reportButton.Add_Click({
 })
 
 $window.ShowDialog()|Out-Null
+

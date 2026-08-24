@@ -31,7 +31,7 @@ function Get-RBZStorageFindings {
                 "Serial: $($d.SerialNumber)"
             ) -join "`n"
             $out.Add((New-RBZFinding -Category 'Storage' -Name "Drive: $($d.FriendlyName)" -Status $state `
-                -Summary "$($d.MediaType) • $sizeGB GB • Health: $($d.HealthStatus)" -Details $details `
+                -Summary "$($d.MediaType) | $sizeGB GB | Health: $($d.HealthStatus)" -Details $details `
                 -Value $d.MediaType -Recommendation $(if($state -ne 'Healthy'){'Back up important data and investigate drive health before making changes.'}else{''})))
         }
     } catch {
@@ -40,3 +40,4 @@ function Get-RBZStorageFindings {
     return $out
 }
 Export-ModuleMember -Function Get-RBZStorageFindings
+

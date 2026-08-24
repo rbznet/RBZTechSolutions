@@ -96,8 +96,8 @@ table{border-collapse:collapse;width:100%;font-size:13px}th,td{border-bottom:1px
 </head>
 <body><div class='wrap'>
 <h1>$($Config.app.company)</h1>
-<div class='meta'>$($Config.app.name) v$($Config.app.version) • $env:COMPUTERNAME • $(Get-Date -Format 'dd MMMM yyyy HH:mm')</div>
-<div class='scorecard'><div class='score'>$score/100</div><div><div class='label'>$label</div><div class='counts'>Healthy $($counts.Healthy) • Recommend $($counts.Recommend) • Warning $($counts.Warning) • Critical $($counts.Critical)</div></div></div>
+<div class='meta'>$($Config.app.name) v$($Config.app.version) | $env:COMPUTERNAME | $(Get-Date -Format 'dd MMMM yyyy HH:mm')</div>
+<div class='scorecard'><div class='score'>$score/100</div><div><div class='label'>$label</div><div class='counts'>Healthy $($counts.Healthy) | Recommend $($counts.Recommend) | Warning $($counts.Warning) | Critical $($counts.Critical)</div></div></div>
 <table><thead><tr><th>Category</th><th>Check</th><th>Status</th><th>Finding</th><th>Recommendation</th></tr></thead><tbody>$($rows -join "`n")</tbody></table>
 <footer>Scan-only diagnostic report. No automatic remediation was performed.</footer>
 </div></body></html>
@@ -107,3 +107,4 @@ table{border-collapse:collapse;width:100%;font-size:13px}th,td{border-bottom:1px
 }
 
 Export-ModuleMember -Function Get-RBZHealthScore,Get-RBZScoreLabel,Export-RBZReport
+
