@@ -1,31 +1,53 @@
-# RBZ PC Health v0.2.3
+# RBZ PC Health v0.2.4
 
-Polish and accuracy release.
+Focused network and Windows Time diagnostic update.
 
-## Changes
-- Added INFO dashboard count.
-- Attention findings sorted Critical, Warning, Recommend.
-- GUI rows colour-coded by status.
-- Added Copy Details button.
-- HTTPS failures become Recommend when DNS and TCP 443 prove connectivity.
-- Defender definition/intelligence updates are informational and do not count as actionable pending updates.
-- Pending updates are classified as Definition, Quality, Feature, Driver, or Other.
-- Secure Boot disabled is now Recommend rather than Warning.
-- GUI version remains driven by Config/settings.json.
+## v0.2.4 changes
+
+- Corrected the Microsoft connectivity test to use the intended HTTP endpoint:
+  `http://www.msftconnecttest.com/connecttest.txt`
+- Validates the expected response: `Microsoft Connect Test`.
+- HTTPS/TLS health is now checked separately against `www.microsoft.com`.
+- TLS diagnostics use `SslStream` plus `X509Chain` instead of treating `Invoke-WebRequest` as the authority.
+- TLS finding includes:
+  - negotiated TLS protocol
+  - certificate subject
+  - issuer
+  - validity dates
+  - thumbprint
+  - chain validity/status
+  - SSL policy errors
+  - Subject Alternative Names when available
+- Added Windows Time synchronisation diagnostic.
+- Detects:
+  - stopped Windows Time service
+  - Local CMOS Clock source
+  - Leap Indicator "not synchronized"
+  - missing/unspecified last successful sync
+- v0.2.4 remains scan-only.
 
 ## Bootstrap
+
 ```powershell
 irm https://raw.githubusercontent.com/rbznet/RBZTechSolutions/main/bootstrap.ps1 | iex
 ```
 
+## Local test
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\RBZHealth.ps1
+```
+
 ## Release
+
 ```powershell
 .\build-release.ps1
 
-gh release create v0.2.3 `
-  ".\dist\RBZ-PC-Health-0.2.3.zip" `
-  ".\dist\RBZ-PC-Health-0.2.3.sha256" `
+gh release create v0.2.4 `
+  ".\dist\RBZ-PC-Health-0.2.4.zip" `
+  ".\dist\RBZ-PC-Health-0.2.4.sha256" `
   --repo rbznet/RBZTechSolutions `
-  --title "RBZ PC Health v0.2.3" `
-  --notes "v0.2.3 accuracy and GUI polish."
+  --title "RBZ PC Health v0.2.4" `
+  --notes "Correct network connectivity/TLS diagnostics and add Windows Time synchronisation checks."
 ```

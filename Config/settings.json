@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "RBZ PC Health",
-    "version": "0.2.3",
+    "version": "0.2.4",
     "company": "RBZ Tech Solutions Ltd",
     "reportPrefix": "RBZ-PC-Health",
     "requireAdmin": true,
@@ -39,12 +39,16 @@
     "secureBoot": true,
     "tpm": true,
     "bitLocker": true,
-    "pendingUpdates": true
+    "pendingUpdates": true,
+    "windowsTime": true
   },
   "network": {
     "connectivityHost": "www.microsoft.com",
     "connectivityPort": 443,
-    "httpsTestUrl": "https://www.msftconnecttest.com/connecttest.txt",
+    "httpConnectivityUrl": "http://www.msftconnecttest.com/connecttest.txt",
+    "httpExpectedContent": "Microsoft Connect Test",
+    "httpsTestHost": "www.microsoft.com",
+    "httpsTestPort": 443,
     "dnsTestName": "www.microsoft.com",
     "timeoutSeconds": 8
   },

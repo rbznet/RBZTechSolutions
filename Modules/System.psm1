@@ -31,7 +31,7 @@ function Get-RBZSystemFindings {
         $upState = if ($uptime.TotalDays -gt [double]$Config.thresholds.uptimeDaysWarning) { 'Recommend' } else { 'Healthy' }
         $out.Add((New-RBZFinding -Category 'System' -Name 'Uptime' -Status $upState `
             -Summary ("{0:N1} days since restart" -f $uptime.TotalDays) -Value $uptime.TotalDays `
-            -Recommendation $(if($upState -ne 'Healthy'){'Restart the device to complete maintenance and pending servicing.'}else{''})))
+            -Recommendation $(if($upState -ne 'Healthy'){'Restart the device to complete pending maintenance and servicing.'}else{''})))
 
         $out.Add((New-RBZFinding -Category 'System' -Name 'BIOS' -Status 'Info' `
             -Summary "$($bios.Manufacturer) $($bios.SMBIOSBIOSVersion)" `
@@ -40,6 +40,66 @@ function Get-RBZSystemFindings {
         $out.Add((New-RBZFinding -Category 'System' -Name 'System inventory' -Status 'Warning' `
             -Summary 'Some system inventory data could not be collected.' -Details $_.Exception.Message))
     }
+
+    if($Config.scan.windowsTime){
+        try {
+            $service = Get-Service W32Time -ErrorAction Stop
+
+            $source = (& w32tm.exe /query /source 2>&1 | Out-String).Trim()
+            $statusText = (& w32tm.exe /query /status 2>&1 | Out-String).Trim()
+
+            $notSync = $false
+            $leap = ''
+            $stratum = ''
+            $lastSync = ''
+
+            foreach($line in ($statusText -split "`r?`n")){
+                if($line -match '^\s*Leap Indicator\s*:\s*(.+)$'){
+                    $leap = $Matches[1].Trim()
+                    if($leap -match 'not synchronized'){ $notSync = $true }
+                }
+                elseif($line -match '^\s*Stratum\s*:\s*(.+)$'){ $stratum = $Matches[1].Trim() }
+                elseif($line -match '^\s*Last Successful Sync Time\s*:\s*(.+)$'){ $lastSync = $Matches[1].Trim() }
+            }
+
+            if($source -match 'Local CMOS Clock'){ $notSync = $true }
+            if($lastSync -match 'unspecified|never|N/A'){ $notSync = $true }
+
+            $state = if($service.Status -ne 'Running'){
+                'Warning'
+            } elseif($notSync){
+                'Warning'
+            } else {
+                'Healthy'
+            }
+
+            $summary = if($state -eq 'Healthy'){
+                "Windows Time is synchronized. Source: $source"
+            } else {
+                "Windows Time is not synchronized correctly. Source: $source"
+            }
+
+            $details = @(
+                "Service: $($service.Status)"
+                "Start type: $($service.StartType)"
+                "Source: $source"
+                "Leap indicator: $leap"
+                "Stratum: $stratum"
+                "Last successful sync: $lastSync"
+                ""
+                "Raw status:"
+                $statusText
+            ) -join "`n"
+
+            $out.Add((New-RBZFinding -Category 'System' -Name 'Windows Time synchronisation' -Status $state `
+                -Summary $summary -Details $details `
+                -Recommendation $(if($state -ne 'Healthy'){'Check Windows Time service, NTP configuration, domain policy, firewall/UDP 123 connectivity, and then resynchronise the clock.'}else{''})))
+        } catch {
+            $out.Add((New-RBZFinding -Category 'System' -Name 'Windows Time synchronisation' -Status 'Info' `
+                -Summary 'Windows Time synchronisation status could not be determined.' -Details $_.Exception.ToString()))
+        }
+    }
+
     return $out
 }
 Export-ModuleMember -Function Get-RBZSystemFindings
