@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "RBZ PC Health",
-    "version": "0.2.4",
+    "version": "0.2.5",
     "company": "RBZ Tech Solutions Ltd",
     "reportPrefix": "RBZ-PC-Health",
     "requireAdmin": true,

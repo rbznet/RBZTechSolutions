@@ -1,30 +1,30 @@
-# RBZ PC Health v0.2.4
+# RBZ PC Health v0.2.5
 
-Focused network and Windows Time diagnostic update.
+Windows Time false-positive fix.
 
-## v0.2.4 changes
+## v0.2.5 changes
 
-- Corrected the Microsoft connectivity test to use the intended HTTP endpoint:
-  `http://www.msftconnecttest.com/connecttest.txt`
-- Validates the expected response: `Microsoft Connect Test`.
-- HTTPS/TLS health is now checked separately against `www.microsoft.com`.
-- TLS diagnostics use `SslStream` plus `X509Chain` instead of treating `Invoke-WebRequest` as the authority.
-- TLS finding includes:
-  - negotiated TLS protocol
-  - certificate subject
-  - issuer
-  - validity dates
-  - thumbprint
-  - chain validity/status
-  - SSL policy errors
-  - Subject Alternative Names when available
-- Added Windows Time synchronisation diagnostic.
-- Detects:
-  - stopped Windows Time service
-  - Local CMOS Clock source
-  - Leap Indicator "not synchronized"
-  - missing/unspecified last successful sync
-- v0.2.4 remains scan-only.
+- Windows Time no longer treats `W32Time = Stopped` as a fault by itself.
+- Checks Windows Time configuration before assigning severity.
+- Reads:
+  - W32Time service state/start type
+  - Windows Time provider type
+  - configured NTP server
+  - NTP client enabled state
+  - special poll interval
+  - `SynchronizeTime` scheduled task state
+  - `ForceSynchronizeTime` scheduled task state
+- Only runs `w32tm /query` when W32Time is actually running.
+- Avoids displaying `0x80070426` as the time source when the service is stopped.
+
+### Status model
+
+- `Healthy` - service running and synchronized.
+- `Info` - service stopped but time synchronisation is correctly configured.
+- `Recommend` - service disabled or provider/NTP configuration is incomplete.
+- `Warning` - service running but explicitly reports an unsynchronised state.
+
+v0.2.5 remains scan-only.
 
 ## Bootstrap
 
@@ -44,10 +44,10 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 ```powershell
 .\build-release.ps1
 
-gh release create v0.2.4 `
-  ".\dist\RBZ-PC-Health-0.2.4.zip" `
-  ".\dist\RBZ-PC-Health-0.2.4.sha256" `
+gh release create v0.2.5 `
+  ".\dist\RBZ-PC-Health-0.2.5.zip" `
+  ".\dist\RBZ-PC-Health-0.2.5.sha256" `
   --repo rbznet/RBZTechSolutions `
-  --title "RBZ PC Health v0.2.4" `
-  --notes "Correct network connectivity/TLS diagnostics and add Windows Time synchronisation checks."
+  --title "RBZ PC Health v0.2.5" `
+  --notes "Improve Windows Time diagnostics and remove stopped-service false positives."
 ```
