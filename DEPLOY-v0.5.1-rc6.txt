@@ -1,0 +1,25 @@
+RBZ PC Health v0.5.1 RC6
+
+Fixes a parser error caused by a literal PowerShell `n sequence being inserted between:
+- $failureMessage
+- $failureTechnicalDetails
+
+Replace:
+- RBZHealth.ps1
+- Modules\Service.psm1
+- Modules\Report.psm1
+- Config\settings.json
+- README.md
+
+Git:
+git status
+git diff
+git add .
+git commit -m "RBZ PC Health v0.5.1 fix RC5 parser error"
+git push origin main
+
+Test:
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\RBZHealth.ps1
+
+Then test DISM RestoreHealth restore-point creation again.

@@ -301,7 +301,8 @@ $RunActionsButton.Add_Click({
                     $ActionLogBox.ScrollToEnd()
                 }
                 else {
-                    $failureMessage=$rp.Summary`n                    $failureTechnicalDetails=$rp.Details
+                    $failureMessage=$rp.Summary
+                    $failureTechnicalDetails=$rp.Details
 
                     $choice=Show-RBZSystemProtectionPrompt -FailureMessage $failureMessage
 
