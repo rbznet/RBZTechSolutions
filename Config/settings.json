@@ -102,7 +102,11 @@
     "showElapsedTime": true,
     "verifyDismAfterRestoreHealth": true,
     "includeRepairVerificationInComparison": true,
-    "includeRepairVerificationInReports": true
+    "includeRepairVerificationInReports": true,
+    "systemProtectionAllocationPercent": 5,
+    "promptWhenSystemProtectionDisabled": true,
+    "verifyRestorePointAfterCreate": true,
+    "allowEnableSystemProtection": true
   },
   "scoring": {
     "categoryWeights": {

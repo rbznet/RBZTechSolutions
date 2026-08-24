@@ -122,3 +122,21 @@ Bootstrap:
 ```powershell
 irm https://raw.githubusercontent.com/rbznet/RBZTechSolutions/main/bootstrap.ps1 | iex
 ```
+
+## Final v0.5.1 System Protection preflight
+
+Medium-risk repairs now check System Protection before execution.
+
+If protection is disabled, RBZ PC Health offers three explicit choices:
+
+- **Enable System Protection** — enables protection for the Windows system drive, configures restore storage using `systemProtectionAllocationPercent`, creates a restore point, and verifies that a new matching restore point actually exists.
+- **Continue Without Restore Point** — requires a second confirmation and logs that rollback protection was skipped by the technician.
+- **Cancel Repair** — no repair is run.
+
+Default allocation:
+
+```json
+"systemProtectionAllocationPercent": 5
+```
+
+RBZ PC Health does not silently enable System Protection. `Checkpoint-Computer` returning without an error is no longer treated as enough evidence: when verification is enabled, a newly created matching restore point must be found.

@@ -102,21 +102,59 @@ function Write-RBZProgressState {
     } catch {}
 }
 
+function Get-RBZSystemProtectionState {
+    param([string]$Drive=$env:SystemDrive)
+    if([string]::IsNullOrWhiteSpace($Drive)){$Drive='C:'}
+    try {
+        $output=& vssadmin.exe list shadowstorage 2>&1 | Out-String
+        $enabled=[bool]($output -match ('(?is)For volume:\s*\(' + [regex]::Escape($Drive) + '\)'))
+        [pscustomobject]@{Drive=$Drive;Enabled=$enabled;Available=$true;Details=$output.Trim()}
+    } catch {
+        [pscustomobject]@{Drive=$Drive;Enabled=$false;Available=$false;Details=$_.Exception.ToString()}
+    }
+}
+
+function Enable-RBZSystemProtection {
+    param($Config,[string]$Drive=$env:SystemDrive)
+    if([string]::IsNullOrWhiteSpace($Drive)){$Drive='C:'}
+    $driveRoot="$Drive\\"
+    $percent=[int]$Config.remediation.systemProtectionAllocationPercent
+    if($percent -lt 1){$percent=5}; if($percent -gt 20){$percent=20}
+    try {
+        if(-not(Get-Command Enable-ComputerRestore -ErrorAction SilentlyContinue)){throw 'Enable-ComputerRestore is unavailable on this Windows installation.'}
+        Enable-ComputerRestore -Drive $driveRoot -ErrorAction Stop
+        $resize=& vssadmin.exe Resize ShadowStorage "/For=$Drive" "/On=$Drive" "/MaxSize=$percent%" 2>&1 | Out-String
+        if($LASTEXITCODE -ne 0){throw "System Protection was enabled, but shadow storage configuration failed.`n$resize"}
+        Start-Sleep -Seconds 1
+        $check=Get-RBZSystemProtectionState -Drive $Drive
+        [pscustomobject]@{Success=[bool]$check.Enabled;Summary=$(if($check.Enabled){"System Protection enabled on $Drive with shadow storage capped at $percent%."}else{'System Protection enablement could not be verified.'});Details="$resize`n`nVerification:`n$($check.Details)"}
+    } catch {
+        [pscustomobject]@{Success=$false;Summary='System Protection could not be enabled.';Details=$_.Exception.ToString()}
+    }
+}
+
 function New-RBZRestorePoint {
     param($Config,[string]$Reason='Pre-repair protection')
-
     $description=[string]$Config.remediation.restorePointDescription
     if([string]::IsNullOrWhiteSpace($description)){$description='RBZ PC Health pre-repair'}
-
     try {
-        if(-not(Get-Command Checkpoint-Computer -ErrorAction SilentlyContinue)){
-            return [pscustomobject]@{Success=$false;Summary='System Restore checkpoint command is unavailable.';Details='Checkpoint-Computer was not found.'}
-        }
-
+        $protection=Get-RBZSystemProtectionState
+        if(-not $protection.Enabled){return [pscustomobject]@{Success=$false;Disabled=$true;Verified=$false;Summary='System Protection is disabled on the Windows system drive.';Details=$protection.Details}}
+        if(-not(Get-Command Checkpoint-Computer -ErrorAction SilentlyContinue)){return [pscustomobject]@{Success=$false;Disabled=$false;Verified=$false;Summary='System Restore checkpoint command is unavailable.';Details='Checkpoint-Computer was not found.'}}
+        $before=@(); try{$before=@(Get-ComputerRestorePoint -ErrorAction SilentlyContinue)}catch{}
+        $beforeMax=if($before.Count){($before|Measure-Object SequenceNumber -Maximum).Maximum}else{-1}
         Checkpoint-Computer -Description $description -RestorePointType MODIFY_SETTINGS -ErrorAction Stop
-        [pscustomobject]@{Success=$true;Summary="Restore point created: $description";Details="Reason: $Reason"}
+        $verified=$true;$verifyDetails=''
+        if($Config.remediation.verifyRestorePointAfterCreate){
+            Start-Sleep -Seconds 2
+            $after=@(Get-ComputerRestorePoint -ErrorAction Stop | Sort-Object SequenceNumber -Descending)
+            $newPoint=$after|Where-Object {$_.SequenceNumber -gt $beforeMax -and $_.Description -eq $description}|Select-Object -First 1
+            $verified=[bool]$newPoint
+            $verifyDetails=if($newPoint){"Sequence: $($newPoint.SequenceNumber)`nDescription: $($newPoint.Description)`nCreation time: $($newPoint.CreationTime)"}else{'Checkpoint-Computer returned without error, but a new matching restore point could not be verified.'}
+        }
+        [pscustomobject]@{Success=[bool]$verified;Disabled=$false;Verified=[bool]$verified;Summary=$(if($verified){"Restore point created and verified: $description"}else{'Restore point creation could not be verified.'});Details="Reason: $Reason`n$verifyDetails"}
     } catch {
-        [pscustomobject]@{Success=$false;Summary='Restore point could not be created.';Details=$_.Exception.ToString()}
+        [pscustomobject]@{Success=$false;Disabled=$false;Verified=$false;Summary='Restore point could not be created.';Details=$_.Exception.ToString()}
     }
 }
 
@@ -246,7 +284,9 @@ function Invoke-RBZServiceAction {
     param(
         [Parameter(Mandatory)][string]$Id,
         $Config,
-        [string]$ProgressPath=''
+        [string]$ProgressPath='',
+        [switch]$SkipRestorePoint,
+        [switch]$RestorePointAlreadyCreated
     )
 
     $started=Get-Date
@@ -280,14 +320,17 @@ function Invoke-RBZServiceAction {
         Write-RBZProgressState -ProgressPath $ProgressPath -Stage $action.Name -Message 'Preparing action...' -Started $started -Indeterminate:$true
 
         if($action.Risk -eq 'Medium' -and $Config.remediation.attemptRestorePointBeforeMediumActions){
-            Write-RBZProgressState -ProgressPath $ProgressPath -Stage 'Creating restore point' -Message 'Attempting pre-repair restore point...' -Started $started -Indeterminate:$true
-            $result.RestorePointAttempted=$true
-            $rp=New-RBZRestorePoint -Config $Config -Reason $action.Name
-            $result.RestorePointCreated=[bool]$rp.Success
-            $result.RestorePointDetails="$($rp.Summary)`n$($rp.Details)"
-
-            if(-not $rp.Success -and $Config.remediation.blockMediumActionIfRestorePointFails){
-                throw "Pre-repair restore point failed and configuration blocks Medium-risk actions.`n$($rp.Details)"
+            if($RestorePointAlreadyCreated){
+                $result.RestorePointAttempted=$true;$result.RestorePointCreated=$true;$result.RestorePointDetails='Restore point was created and verified during technician preflight.'
+            } elseif($SkipRestorePoint){
+                $result.RestorePointAttempted=$false;$result.RestorePointCreated=$false;$result.RestorePointDetails='Pre-repair restore point skipped explicitly by technician.'
+            } else {
+                Write-RBZProgressState -ProgressPath $ProgressPath -Stage 'Creating restore point' -Message 'Attempting pre-repair restore point...' -Started $started -Indeterminate:$true
+                $result.RestorePointAttempted=$true
+                $rp=New-RBZRestorePoint -Config $Config -Reason $action.Name
+                $result.RestorePointCreated=[bool]$rp.Success
+                $result.RestorePointDetails="$($rp.Summary)`n$($rp.Details)"
+                if(-not $rp.Success -and $Config.remediation.blockMediumActionIfRestorePointFails){throw "Pre-repair restore point failed and configuration blocks Medium-risk actions.`n$($rp.Details)"}
             }
         }
 
@@ -469,4 +512,4 @@ function Invoke-RBZServiceAction {
     [pscustomobject]$result
 }
 
-Export-ModuleMember -Function Get-RBZServiceActions,Invoke-RBZServiceAction,New-RBZRestorePoint
+Export-ModuleMember -Function Get-RBZServiceActions,Invoke-RBZServiceAction,New-RBZRestorePoint,Get-RBZSystemProtectionState,Enable-RBZSystemProtection
