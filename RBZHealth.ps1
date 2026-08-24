@@ -301,7 +301,7 @@ $RunActionsButton.Add_Click({
                     $ActionLogBox.ScrollToEnd()
                 }
                 else {
-                    $failureMessage="$($rp.Summary)`n`n$($rp.Details)"
+                    $failureMessage=$rp.Summary`n                    $failureTechnicalDetails=$rp.Details
 
                     $choice=Show-RBZSystemProtectionPrompt -FailureMessage $failureMessage
 
@@ -309,7 +309,7 @@ $RunActionsButton.Add_Click({
                         $ActionLogBox.AppendText(
                             "[$((Get-Date).ToString('HH:mm:ss'))] $($a.Name)`r`n" +
                             "Repair cancelled because the pre-repair restore point was not created/verified.`r`n" +
-                            "$failureMessage`r`n`r`n"
+                            "$failureMessage`r`n$failureTechnicalDetails`r`n`r`n"
                         )
                         $a.Selected=$false
                         continue
@@ -381,7 +381,7 @@ $RunActionsButton.Add_Click({
                         $ActionLogBox.AppendText(
                             "[$((Get-Date).ToString('HH:mm:ss'))] $($a.Name)`r`n" +
                             "Pre-repair protection: SKIPPED BY TECHNICIAN.`r`n" +
-                            "$failureMessage`r`n`r`n"
+                            "$failureMessage`r`n$failureTechnicalDetails`r`n`r`n"
                         )
                     }
                 }

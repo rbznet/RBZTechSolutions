@@ -183,3 +183,23 @@ The workflow is now:
 6. If the actual creation/verification fails, offer retry/enable, skip, or cancel.
 
 This avoids false failures caused by command discovery behaving differently inside the application execution context.
+
+
+## RC5 restore-point isolation
+
+Restore-point creation now runs in a clean Windows PowerShell child process:
+
+```text
+powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass
+```
+
+This isolates `Checkpoint-Computer` from module/autoload corruption in the main RBZ PC Health process.
+
+Success is still determined only by verification:
+
+1. Read existing restore-point sequence numbers.
+2. Launch clean child Windows PowerShell and run `Checkpoint-Computer`.
+3. Read restore points again.
+4. Confirm that a new matching RBZ restore point exists.
+
+The customer-facing dialog now shows a concise failure summary; detailed child-process output remains available for technician troubleshooting.

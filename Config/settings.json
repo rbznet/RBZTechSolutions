@@ -106,7 +106,8 @@
     "systemProtectionAllocationPercent": 5,
     "promptWhenSystemProtectionDisabled": true,
     "verifyRestorePointAfterCreate": true,
-    "allowEnableSystemProtection": true
+    "allowEnableSystemProtection": true,
+    "restorePointUseCleanPowerShell": true
   },
   "scoring": {
     "categoryWeights": {

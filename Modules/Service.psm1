@@ -133,6 +133,41 @@ function Enable-RBZSystemProtection {
     }
 }
 
+function Invoke-RBZCheckpointComputerClean {
+    param(
+        [Parameter(Mandatory)][string]$Description
+    )
+
+    $escaped = $Description.Replace("'","''")
+    $command = @"
+`$ErrorActionPreference='Stop'
+Checkpoint-Computer -Description '$escaped' -RestorePointType MODIFY_SETTINGS -ErrorAction Stop
+"@
+
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
+
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
+    $psi.Arguments = "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand $encoded"
+    $psi.UseShellExecute = $false
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.CreateNoWindow = $true
+
+    $p = New-Object System.Diagnostics.Process
+    $p.StartInfo = $psi
+    [void]$p.Start()
+    $stdout = $p.StandardOutput.ReadToEnd()
+    $stderr = $p.StandardError.ReadToEnd()
+    $p.WaitForExit()
+
+    [pscustomobject]@{
+        ExitCode = $p.ExitCode
+        StdOut = $stdout.Trim()
+        StdErr = $stderr.Trim()
+    }
+}
+
 function New-RBZRestorePoint {
     param($Config,[string]$Reason='Pre-repair protection')
 
@@ -140,7 +175,6 @@ function New-RBZRestorePoint {
     if([string]::IsNullOrWhiteSpace($description)){$description='RBZ PC Health pre-repair'}
 
     try {
-
         $before=@()
         try {
             $before=@(Get-ComputerRestorePoint -ErrorAction SilentlyContinue)
@@ -148,15 +182,21 @@ function New-RBZRestorePoint {
 
         $beforeSequences=@($before | ForEach-Object {[int]$_.SequenceNumber})
 
-        Checkpoint-Computer `
-            -Description $description `
-            -RestorePointType MODIFY_SETTINGS `
-            -ErrorAction Stop
+        $child=Invoke-RBZCheckpointComputerClean -Description $description
+
+        if($child.ExitCode -ne 0){
+            return [pscustomobject]@{
+                Success=$false
+                Verified=$false
+                FailureType='CreateFailed'
+                Summary='Windows could not create the pre-repair restore point.'
+                Details="Child PowerShell exit code: $($child.ExitCode)`nSTDOUT:`n$($child.StdOut)`n`nSTDERR:`n$($child.StdErr)"
+            }
+        }
 
         Start-Sleep -Seconds 2
 
         $after=@(Get-ComputerRestorePoint -ErrorAction Stop | Sort-Object SequenceNumber -Descending)
-
         $newPoint=$after |
             Where-Object {
                 ([int]$_.SequenceNumber -notin $beforeSequences) -and
@@ -169,8 +209,8 @@ function New-RBZRestorePoint {
                 Success=$false
                 Verified=$false
                 FailureType='VerificationFailed'
-                Summary='Checkpoint-Computer returned without error, but a new restore point could not be verified.'
-                Details="Description requested: $description`nReason: $Reason"
+                Summary='A restore point command completed, but the new restore point could not be verified.'
+                Details="Description requested: $description`nReason: $Reason`nChild PowerShell stdout:`n$($child.StdOut)`nChild PowerShell stderr:`n$($child.StdErr)"
             }
         }
 
@@ -188,8 +228,8 @@ function New-RBZRestorePoint {
         [pscustomobject]@{
             Success=$false
             Verified=$false
-            FailureType='CreateFailed'
-            Summary='Restore point could not be created.'
+            FailureType='UnexpectedFailure'
+            Summary='Restore point creation/verification failed.'
             Details=$_.Exception.ToString()
         }
     }
