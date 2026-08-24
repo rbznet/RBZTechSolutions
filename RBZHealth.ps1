@@ -214,11 +214,11 @@ function Show-RBZSystemProtectionPrompt {
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Title="RBZ PC Health - System Protection" Height="300" Width="610" ResizeMode="NoResize" WindowStartupLocation="CenterOwner" Background="#F3F4F6">
   <Grid Margin="18">
     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-    <StackPanel><TextBlock Text="System Protection is disabled" FontSize="21" FontWeight="Bold"/><TextBlock Margin="0,8,0,0" TextWrapping="Wrap" Text="RBZ PC Health normally creates and verifies a restore point before Medium-risk repairs. System Protection is currently disabled for the Windows system drive."/></StackPanel>
+    <StackPanel><TextBlock Text="Pre-repair restore point unavailable" FontSize="21" FontWeight="Bold"/><TextBlock Margin="0,8,0,0" TextWrapping="Wrap" Text="RBZ PC Health could not create and verify the required restore point. System Protection may be disabled, unavailable, or unable to create a checkpoint on this device."/></StackPanel>
     <Border Grid.Row="1" Background="White" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="7" Padding="12" Margin="0,14,0,14">
-      <TextBlock TextWrapping="Wrap"><Run Text="Enable System Protection" FontWeight="Bold"/><Run Text=": enable protection, configure restore storage, create and verify a restore point, then continue."/><LineBreak/><LineBreak/><Run Text="Continue Without Restore Point" FontWeight="Bold"/><Run Text=": run the selected repair without rollback protection. This choice is logged."/></TextBlock>
+      <TextBlock TextWrapping="Wrap"><Run Text="Enable Protection &amp; Retry" FontWeight="Bold"/><Run Text=": enable protection, configure restore storage, then create and verify a restore point before continuing."/><LineBreak/><LineBreak/><Run Text="Continue Without Restore Point" FontWeight="Bold"/><Run Text=": run the selected repair without rollback protection. This choice is logged."/></TextBlock>
     </Border>
-    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right"><Button Name="EnableButton" Content="Enable System Protection" Width="175" Height="36"/><Button Name="SkipButton" Content="Continue Without Restore Point" Width="205" Height="36" Margin="8,0,0,0"/><Button Name="CancelButton" Content="Cancel Repair" Width="110" Height="36" Margin="8,0,0,0"/></StackPanel>
+    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right"><Button Name="EnableButton" Content="Enable Protection &amp; Retry" Width="175" Height="36"/><Button Name="SkipButton" Content="Continue Without Restore Point" Width="205" Height="36" Margin="8,0,0,0"/><Button Name="CancelButton" Content="Cancel Repair" Width="110" Height="36" Margin="8,0,0,0"/></StackPanel>
   </Grid>
 </Window>
 '@
@@ -253,37 +253,52 @@ $RunActionsButton.Add_Click({
             $restorePointAlreadyCreated=$false
 
             if($a.Risk -eq 'Medium' -and $Config.remediation.attemptRestorePointBeforeMediumActions){
-                $protection=Get-RBZSystemProtectionState
-                if(-not $protection.Enabled -and $Config.remediation.promptWhenSystemProtectionDisabled){
+                $ActionStatusText.Text='Creating and verifying pre-repair restore point...'
+                $window.Dispatcher.Invoke([action]{},[System.Windows.Threading.DispatcherPriority]::Background)
+                $rp=New-RBZRestorePoint -Config $Config -Reason $a.Name
+
+                if($rp.Success){
+                    $restorePointAlreadyCreated=$true
+                    $ActionLogBox.AppendText("[$((Get-Date).ToString('HH:mm:ss'))] $($a.Name)`r`nPre-repair protection: restore point CREATED AND VERIFIED.`r`n$($rp.Details)`r`n`r`n")
+                }
+                else {
+                    $ActionLogBox.AppendText("[$((Get-Date).ToString('HH:mm:ss'))] $($a.Name)`r`nPre-repair restore point unavailable.`r`n$($rp.Summary)`r`n$($rp.Details)`r`n`r`n")
                     $choice=Show-RBZSystemProtectionPrompt
+
                     if($choice -eq 'Cancel'){
-                        $ActionLogBox.AppendText("[$((Get-Date).ToString('HH:mm:ss'))] $($a.Name)`r`nCancelled: System Protection is disabled.`r`n`r`n")
-                        $a.Selected=$false; continue
+                        $ActionLogBox.AppendText("[$((Get-Date).ToString('HH:mm:ss'))] $($a.Name)`r`nRepair cancelled before changes were made.`r`n`r`n")
+                        $a.Selected=$false
+                        continue
                     }
+
                     if($choice -eq 'Enable'){
-                        $ActionStatusText.Text='Enabling System Protection...'
+                        $ActionStatusText.Text='Enabling System Protection and retrying restore point...'
                         $window.Dispatcher.Invoke([action]{},[System.Windows.Threading.DispatcherPriority]::Background)
                         $enabled=Enable-RBZSystemProtection -Config $Config
                         if(-not $enabled.Success){
                             [System.Windows.MessageBox]::Show("$($enabled.Summary)`n`n$($enabled.Details)",'RBZ PC Health - System Protection',[System.Windows.MessageBoxButton]::OK,[System.Windows.MessageBoxImage]::Warning)|Out-Null
-                            $a.Selected=$false; continue
+                            $a.Selected=$false
+                            continue
                         }
-                        $rp=New-RBZRestorePoint -Config $Config -Reason $a.Name
-                        if(-not $rp.Success){
-                            $fallback=[System.Windows.MessageBox]::Show("System Protection was enabled, but the restore point could not be verified.`n`n$($rp.Details)`n`nContinue with this repair WITHOUT a restore point?",'RBZ PC Health - Restore Point Verification',[System.Windows.MessageBoxButton]::YesNo,[System.Windows.MessageBoxImage]::Warning)
+
+                        $rpRetry=New-RBZRestorePoint -Config $Config -Reason $a.Name
+                        if($rpRetry.Success){
+                            $restorePointAlreadyCreated=$true
+                            $ActionLogBox.AppendText("[$((Get-Date).ToString('HH:mm:ss'))] $($a.Name)`r`nSystem Protection enabled. Restore point CREATED AND VERIFIED.`r`n$($rpRetry.Details)`r`n`r`n")
+                        }
+                        else {
+                            $fallback=[System.Windows.MessageBox]::Show("System Protection enablement completed, but RBZ PC Health still could not create and verify a restore point.`n`n$($rpRetry.Details)`n`nContinue with this repair WITHOUT a restore point?",'RBZ PC Health - Restore Point Verification',[System.Windows.MessageBoxButton]::YesNo,[System.Windows.MessageBoxImage]::Warning)
                             if($fallback -ne [System.Windows.MessageBoxResult]::Yes){$a.Selected=$false;continue}
                             $skipRestorePoint=$true
                             $ActionLogBox.AppendText("[$((Get-Date).ToString('HH:mm:ss'))] $($a.Name)`r`nPre-repair protection: SKIPPED BY TECHNICIAN after restore point verification failure.`r`n`r`n")
-                        } else {
-                            $restorePointAlreadyCreated=$true
-                            $ActionLogBox.AppendText("[$((Get-Date).ToString('HH:mm:ss'))] $($a.Name)`r`nPre-repair protection: restore point CREATED AND VERIFIED.`r`n$($rp.Details)`r`n`r`n")
                         }
                     }
+
                     if($choice -eq 'Skip'){
-                        $confirmSkip=[System.Windows.MessageBox]::Show("Continue with '$($a.Name)' without a restore point?",'RBZ PC Health - Confirm No Restore Point',[System.Windows.MessageBoxButton]::YesNo,[System.Windows.MessageBoxImage]::Warning)
+                        $confirmSkip=[System.Windows.MessageBox]::Show("Continue with '$($a.Name)' without a verified restore point?",'RBZ PC Health - Confirm No Restore Point',[System.Windows.MessageBoxButton]::YesNo,[System.Windows.MessageBoxImage]::Warning)
                         if($confirmSkip -ne [System.Windows.MessageBoxResult]::Yes){$a.Selected=$false;continue}
                         $skipRestorePoint=$true
-                        $ActionLogBox.AppendText("[$((Get-Date).ToString('HH:mm:ss'))] $($a.Name)`r`nPre-repair protection: SKIPPED BY TECHNICIAN. System Protection is disabled.`r`n`r`n")
+                        $ActionLogBox.AppendText("[$((Get-Date).ToString('HH:mm:ss'))] $($a.Name)`r`nPre-repair protection: SKIPPED BY TECHNICIAN. No verified restore point exists.`r`n`r`n")
                     }
                 }
             }

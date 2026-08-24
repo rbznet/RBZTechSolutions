@@ -126,8 +126,7 @@ function Enable-RBZSystemProtection {
         $resize=& vssadmin.exe Resize ShadowStorage "/For=$Drive" "/On=$Drive" "/MaxSize=$percent%" 2>&1 | Out-String
         if($LASTEXITCODE -ne 0){throw "System Protection was enabled, but shadow storage configuration failed.`n$resize"}
         Start-Sleep -Seconds 1
-        $check=Get-RBZSystemProtectionState -Drive $Drive
-        [pscustomobject]@{Success=[bool]$check.Enabled;Summary=$(if($check.Enabled){"System Protection enabled on $Drive with shadow storage capped at $percent%."}else{'System Protection enablement could not be verified.'});Details="$resize`n`nVerification:`n$($check.Details)"}
+        [pscustomobject]@{Success=$true;Summary="System Protection enable command completed on $Drive with shadow storage capped at $percent%.";Details=$resize.Trim()}
     } catch {
         [pscustomobject]@{Success=$false;Summary='System Protection could not be enabled.';Details=$_.Exception.ToString()}
     }
@@ -138,8 +137,6 @@ function New-RBZRestorePoint {
     $description=[string]$Config.remediation.restorePointDescription
     if([string]::IsNullOrWhiteSpace($description)){$description='RBZ PC Health pre-repair'}
     try {
-        $protection=Get-RBZSystemProtectionState
-        if(-not $protection.Enabled){return [pscustomobject]@{Success=$false;Disabled=$true;Verified=$false;Summary='System Protection is disabled on the Windows system drive.';Details=$protection.Details}}
         if(-not(Get-Command Checkpoint-Computer -ErrorAction SilentlyContinue)){return [pscustomobject]@{Success=$false;Disabled=$false;Verified=$false;Summary='System Restore checkpoint command is unavailable.';Details='Checkpoint-Computer was not found.'}}
         $before=@(); try{$before=@(Get-ComputerRestorePoint -ErrorAction SilentlyContinue)}catch{}
         $beforeMax=if($before.Count){($before|Measure-Object SequenceNumber -Maximum).Maximum}else{-1}
@@ -154,7 +151,9 @@ function New-RBZRestorePoint {
         }
         [pscustomobject]@{Success=[bool]$verified;Disabled=$false;Verified=[bool]$verified;Summary=$(if($verified){"Restore point created and verified: $description"}else{'Restore point creation could not be verified.'});Details="Reason: $Reason`n$verifyDetails"}
     } catch {
-        [pscustomobject]@{Success=$false;Disabled=$false;Verified=$false;Summary='Restore point could not be created.';Details=$_.Exception.ToString()}
+        $msg=$_.Exception.ToString()
+        $disabled=($msg -match '(?i)system restore.*disabled|system protection.*disabled|0x81000203|0x81000202')
+        [pscustomobject]@{Success=$false;Disabled=$disabled;Verified=$false;Summary=$(if($disabled){'System Protection appears to be disabled or unavailable.'}else{'Restore point could not be created or verified.'});Details=$msg}
     }
 }
 

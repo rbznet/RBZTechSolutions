@@ -140,3 +140,8 @@ Default allocation:
 ```
 
 RBZ PC Health does not silently enable System Protection. `Checkpoint-Computer` returning without an error is no longer treated as enough evidence: when verification is enabled, a newly created matching restore point must be found.
+
+
+## v0.5.1 RC2 restore-point preflight fix
+
+Medium-risk repairs no longer trust VSS shadow-storage presence as proof that System Protection is enabled. RBZ PC Health first attempts to create and verify a restore point. If that fails for any reason, the repair is paused and the technician must choose Enable Protection & Retry, Continue Without Restore Point, or Cancel Repair.
