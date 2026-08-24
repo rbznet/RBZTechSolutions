@@ -1,30 +1,54 @@
-# RBZ PC Health v0.2.5
+# RBZ PC Health v0.3.0
 
-Windows Time false-positive fix.
+First service-ready RBZ PC Health release.
 
-## v0.2.5 changes
+## v0.3.0
 
-- Windows Time no longer treats `W32Time = Stopped` as a fault by itself.
-- Checks Windows Time configuration before assigning severity.
-- Reads:
-  - W32Time service state/start type
-  - Windows Time provider type
-  - configured NTP server
-  - NTP client enabled state
-  - special poll interval
-  - `SynchronizeTime` scheduled task state
-  - `ForceSynchronizeTime` scheduled task state
-- Only runs `w32tm /query` when W32Time is actually running.
-- Avoids displaying `0x80070426` as the time source when the service is stopped.
+### Service workflow
+- Customer field
+- Job reference field
+- Full diagnostic scan
+- Attention / All Results views
+- Repair Centre
+- Customer report
+- Technician report
+- Service-action audit log
 
-### Status model
+### Guided Repair Centre
+v0.3.0 only exposes deliberately low-risk actions:
 
-- `Healthy` - service running and synchronized.
-- `Info` - service stopped but time synchronisation is correctly configured.
-- `Recommend` - service disabled or provider/NTP configuration is incomplete.
-- `Warning` - service running but explicitly reports an unsynchronised state.
+- Microsoft Defender Quick Scan
+- DISM `/Online /Cleanup-Image /ScanHealth`
+- SFC `/verifyonly`
+- Temporary-file cleanup
 
-v0.2.5 remains scan-only.
+Every action:
+- must be explicitly ticked by the technician
+- requires a confirmation dialog
+- is logged
+- is included in generated reports
+- does not silently run during a scan
+
+### Intentionally NOT included
+- driver installation
+- Windows Update installation
+- registry cleaning
+- debloat scripts
+- service disabling
+- Secure Boot changes
+- BitLocker changes
+- software removal
+- BIOS/firmware changes
+
+### Customer vs Technician reports
+Customer reports hide Info findings and sensitive hardware detail where configured.
+Technician reports retain full diagnostic detail and category score deductions.
+
+### Branding
+Brand/product text, website, support email and report colours are configured in `Config/settings.json`.
+A future logo can be placed at:
+
+`Assets\rbz-logo.png`
 
 ## Bootstrap
 
@@ -44,10 +68,10 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 ```powershell
 .\build-release.ps1
 
-gh release create v0.2.5 `
-  ".\dist\RBZ-PC-Health-0.2.5.zip" `
-  ".\dist\RBZ-PC-Health-0.2.5.sha256" `
+gh release create v0.3.0 `
+  ".\dist\RBZ-PC-Health-0.3.0.zip" `
+  ".\dist\RBZ-PC-Health-0.3.0.sha256" `
   --repo rbznet/RBZTechSolutions `
-  --title "RBZ PC Health v0.2.5" `
-  --notes "Improve Windows Time diagnostics and remove stopped-service false positives."
+  --title "RBZ PC Health v0.3.0" `
+  --notes "First service-ready release with guided low-risk remediation and customer/technician reporting."
 ```

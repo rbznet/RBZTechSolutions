@@ -1,0 +1,45 @@
+RBZ PC Health v0.3.0 update
+
+Replace/add:
+- Config\settings.json
+- Modules\Service.psm1   (NEW)
+- Modules\Report.psm1
+- RBZHealth.ps1
+- README.md
+
+Keep all existing diagnostic modules from v0.2.5.
+
+Then:
+git status
+git diff
+git add .
+git commit -m "RBZ PC Health v0.3.0 service workflow"
+git push
+
+TEST LOCALLY FIRST:
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\RBZHealth.ps1
+
+Test order:
+1. Run Full Scan.
+2. Confirm Attention and All Results still work.
+3. Open Repair Centre.
+4. First test ONLY DISM ScanHealth or SFC VerifyOnly.
+5. Confirm action log populates.
+6. Generate Customer report.
+7. Generate Technician report.
+8. Confirm actions appear in both reports.
+9. Test Temp Cleanup separately on a test machine/VM before customer use.
+
+If all good:
+.\build-release.ps1
+
+gh release create v0.3.0 `
+  ".\dist\RBZ-PC-Health-0.3.0.zip" `
+  ".\dist\RBZ-PC-Health-0.3.0.sha256" `
+  --repo rbznet/RBZTechSolutions `
+  --title "RBZ PC Health v0.3.0" `
+  --notes "First service-ready release with guided low-risk remediation and customer/technician reporting."
+
+Final:
+irm https://raw.githubusercontent.com/rbznet/RBZTechSolutions/main/bootstrap.ps1 | iex

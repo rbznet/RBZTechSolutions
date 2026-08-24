@@ -1,11 +1,21 @@
 {
   "app": {
     "name": "RBZ PC Health",
-    "version": "0.2.5",
+    "version": "0.3.0",
     "company": "RBZ Tech Solutions Ltd",
+    "productSubtitle": "Technician Diagnostic & Service Suite",
     "reportPrefix": "RBZ-PC-Health",
     "requireAdmin": true,
     "minimumPowerShellMajor": 5
+  },
+  "branding": {
+    "accent": "#111827",
+    "accentText": "#FFFFFF",
+    "surface": "#FFFFFF",
+    "background": "#F3F4F6",
+    "logoPath": ".\\Assets\\rbz-logo.png",
+    "website": "rbztechsolutions.com",
+    "supportEmail": "info@rbztechsolutions.com"
   },
   "paths": {
     "reports": ".\\Reports",
@@ -64,7 +74,16 @@
   },
   "report": {
     "hideHardwareSerialsInHtml": true,
-    "showInfoFindings": true
+    "showInfoFindings": true,
+    "defaultAudience": "Customer"
+  },
+  "remediation": {
+    "enabled": true,
+    "allowTempCleanup": true,
+    "allowDefenderQuickScan": true,
+    "allowDismScanHealth": true,
+    "allowSfcVerifyOnly": true,
+    "maxActionLogEntries": 100
   },
   "scoring": {
     "categoryWeights": {
