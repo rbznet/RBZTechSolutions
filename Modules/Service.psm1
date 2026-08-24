@@ -126,7 +126,8 @@ function Enable-RBZSystemProtection {
         $resize=& vssadmin.exe Resize ShadowStorage "/For=$Drive" "/On=$Drive" "/MaxSize=$percent%" 2>&1 | Out-String
         if($LASTEXITCODE -ne 0){throw "System Protection was enabled, but shadow storage configuration failed.`n$resize"}
         Start-Sleep -Seconds 1
-        [pscustomobject]@{Success=$true;Summary="System Protection enable command completed on $Drive with shadow storage capped at $percent%.";Details=$resize.Trim()}
+        $check=Get-RBZSystemProtectionState -Drive $Drive
+        [pscustomobject]@{Success=[bool]$check.Enabled;Summary=$(if($check.Enabled){"System Protection enabled on $Drive with shadow storage capped at $percent%."}else{'System Protection enablement could not be verified.'});Details="$resize`n`nVerification:`n$($check.Details)"}
     } catch {
         [pscustomobject]@{Success=$false;Summary='System Protection could not be enabled.';Details=$_.Exception.ToString()}
     }
@@ -134,26 +135,72 @@ function Enable-RBZSystemProtection {
 
 function New-RBZRestorePoint {
     param($Config,[string]$Reason='Pre-repair protection')
+
     $description=[string]$Config.remediation.restorePointDescription
     if([string]::IsNullOrWhiteSpace($description)){$description='RBZ PC Health pre-repair'}
+
     try {
-        if(-not(Get-Command Checkpoint-Computer -ErrorAction SilentlyContinue)){return [pscustomobject]@{Success=$false;Disabled=$false;Verified=$false;Summary='System Restore checkpoint command is unavailable.';Details='Checkpoint-Computer was not found.'}}
-        $before=@(); try{$before=@(Get-ComputerRestorePoint -ErrorAction SilentlyContinue)}catch{}
-        $beforeMax=if($before.Count){($before|Measure-Object SequenceNumber -Maximum).Maximum}else{-1}
-        Checkpoint-Computer -Description $description -RestorePointType MODIFY_SETTINGS -ErrorAction Stop
-        $verified=$true;$verifyDetails=''
-        if($Config.remediation.verifyRestorePointAfterCreate){
-            Start-Sleep -Seconds 2
-            $after=@(Get-ComputerRestorePoint -ErrorAction Stop | Sort-Object SequenceNumber -Descending)
-            $newPoint=$after|Where-Object {$_.SequenceNumber -gt $beforeMax -and $_.Description -eq $description}|Select-Object -First 1
-            $verified=[bool]$newPoint
-            $verifyDetails=if($newPoint){"Sequence: $($newPoint.SequenceNumber)`nDescription: $($newPoint.Description)`nCreation time: $($newPoint.CreationTime)"}else{'Checkpoint-Computer returned without error, but a new matching restore point could not be verified.'}
+        if(-not(Get-Command Checkpoint-Computer -ErrorAction SilentlyContinue)){
+            return [pscustomobject]@{
+                Success=$false
+                Verified=$false
+                FailureType='CommandUnavailable'
+                Summary='System Restore checkpoint command is unavailable.'
+                Details='Checkpoint-Computer was not found.'
+            }
         }
-        [pscustomobject]@{Success=[bool]$verified;Disabled=$false;Verified=[bool]$verified;Summary=$(if($verified){"Restore point created and verified: $description"}else{'Restore point creation could not be verified.'});Details="Reason: $Reason`n$verifyDetails"}
+
+        $before=@()
+        try {
+            $before=@(Get-ComputerRestorePoint -ErrorAction SilentlyContinue)
+        } catch {}
+
+        $beforeSequences=@($before | ForEach-Object {[int]$_.SequenceNumber})
+
+        Checkpoint-Computer `
+            -Description $description `
+            -RestorePointType MODIFY_SETTINGS `
+            -ErrorAction Stop
+
+        Start-Sleep -Seconds 2
+
+        $after=@(Get-ComputerRestorePoint -ErrorAction Stop | Sort-Object SequenceNumber -Descending)
+
+        $newPoint=$after |
+            Where-Object {
+                ([int]$_.SequenceNumber -notin $beforeSequences) -and
+                ([string]$_.Description -eq $description)
+            } |
+            Select-Object -First 1
+
+        if(-not $newPoint){
+            return [pscustomobject]@{
+                Success=$false
+                Verified=$false
+                FailureType='VerificationFailed'
+                Summary='Checkpoint-Computer returned without error, but a new restore point could not be verified.'
+                Details="Description requested: $description`nReason: $Reason"
+            }
+        }
+
+        [pscustomobject]@{
+            Success=$true
+            Verified=$true
+            FailureType=''
+            SequenceNumber=[int]$newPoint.SequenceNumber
+            Description=[string]$newPoint.Description
+            CreationTime=[string]$newPoint.CreationTime
+            Summary="Restore point created and verified: $description"
+            Details="Sequence: $($newPoint.SequenceNumber)`nDescription: $($newPoint.Description)`nCreation time: $($newPoint.CreationTime)`nReason: $Reason"
+        }
     } catch {
-        $msg=$_.Exception.ToString()
-        $disabled=($msg -match '(?i)system restore.*disabled|system protection.*disabled|0x81000203|0x81000202')
-        [pscustomobject]@{Success=$false;Disabled=$disabled;Verified=$false;Summary=$(if($disabled){'System Protection appears to be disabled or unavailable.'}else{'Restore point could not be created or verified.'});Details=$msg}
+        [pscustomobject]@{
+            Success=$false
+            Verified=$false
+            FailureType='CreateFailed'
+            Summary='Restore point could not be created.'
+            Details=$_.Exception.ToString()
+        }
     }
 }
 
