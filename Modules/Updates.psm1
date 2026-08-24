@@ -1,19 +1,16 @@
 function Get-RBZUpdateFindings {
     param($Config)
-    $out = [System.Collections.Generic.List[object]]::new()
-    try {
-        $svc = Get-Service wuauserv -ErrorAction Stop
-        $state = if($svc.StartType -eq 'Disabled'){'Warning'}else{'Healthy'}
-        $out.Add((New-RBZFinding -Category 'Updates' -Name 'Windows Update service' -Status $state -Summary "Status=$($svc.Status); StartType=$($svc.StartType)" -Recommendation $(if($state -eq 'Warning'){'Windows Update is disabled; review policy or service configuration.'}else{''})))
-    } catch {$out.Add((New-RBZFinding -Category 'Updates' -Name 'Windows Update service' -Status 'Info' -Summary 'Windows Update service status unavailable.'))}
-
-    $pending = $false
-    $paths = @(
-        'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired',
-        'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending'
-    )
-    foreach($p in $paths){if(Test-Path $p){$pending=$true}}
-    $out.Add((New-RBZFinding -Category 'Updates' -Name 'Pending restart' -Status $(if($pending){'Warning'}else{'Healthy'}) -Summary $(if($pending){'Windows indicates a restart is pending.'}else{'No common pending-restart indicators detected.'}) -Recommendation $(if($pending){'Restart the device after confirming with the customer.'}else{''})))
+    $out=[System.Collections.Generic.List[object]]::new()
+    if($Config.scan.windowsUpdateService){
+        try {$svc=Get-Service wuauserv -ErrorAction Stop; $state=if($svc.StartType -eq 'Disabled'){'Warning'}else{'Info'}; $out.Add((New-RBZFinding -Category 'Updates' -Name 'Windows Update service' -Status $state -Summary "Status=$($svc.Status); StartType=$($svc.StartType)" -Details 'Windows Update is trigger-started on modern Windows versions, so Stopped/Manual is not inherently unhealthy.' -Recommendation $(if($state -eq 'Warning'){'Windows Update is disabled; review policy or service configuration.'}else{''})))} catch {$out.Add((New-RBZFinding -Category 'Updates' -Name 'Windows Update service' -Status 'Info' -Summary 'Windows Update service status unavailable.' -Details $_.Exception.Message))}
+    }
+    try {$hotfix=Get-HotFix -ErrorAction Stop | Where-Object InstalledOn | Sort-Object InstalledOn -Descending | Select-Object -First 1; if($hotfix){$out.Add((New-RBZFinding -Category 'Updates' -Name 'Latest installed update' -Status 'Info' -Summary "$($hotfix.HotFixID) installed $($hotfix.InstalledOn.ToString('dd MMM yyyy'))" -Details "Description: $($hotfix.Description)`nInstalled by: $($hotfix.InstalledBy)"))}} catch {}
+    if($Config.scan.pendingUpdates){
+        try {$session=New-Object -ComObject Microsoft.Update.Session; $searcher=$session.CreateUpdateSearcher(); $result=$searcher.Search("IsInstalled=0 and IsHidden=0 and Type='Software'"); $count=[int]$result.Updates.Count; $status=if($count -gt 0){'Recommend'}else{'Healthy'}; $titles=@(); for($i=0;$i -lt [Math]::Min($count,15);$i++){$titles+=$result.Updates.Item($i).Title}; $details=if($titles.Count){$titles -join "`n"}else{'No pending software updates returned by Windows Update.'}; $out.Add((New-RBZFinding -Category 'Updates' -Name 'Pending updates' -Status $status -Summary $(if($count -gt 0){"$count pending Windows software update(s) found."}else{'No pending Windows software updates found.'}) -Details $details -Value $count -Recommendation $(if($count -gt 0){'Review and install appropriate Windows updates after confirming reboot expectations with the customer.'}else{''})))} catch {$out.Add((New-RBZFinding -Category 'Updates' -Name 'Pending updates' -Status 'Info' -Summary 'Pending update query was unavailable.' -Details $_.Exception.Message))}
+    }
+    try {$since=(Get-Date).AddDays(-30); $failed=@(Get-WinEvent -FilterHashtable @{LogName='Microsoft-Windows-WindowsUpdateClient/Operational';Level=2;StartTime=$since} -ErrorAction Stop); $threshold=[int]$Config.thresholds.failedUpdateEventsWarning; $status=if($failed.Count -ge $threshold){'Warning'}elseif($failed.Count -gt 0){'Recommend'}else{'Healthy'}; $details=if($failed.Count){($failed | Select-Object -First 10 | ForEach-Object {"$($_.TimeCreated.ToString('dd MMM yyyy HH:mm')) | Event $($_.Id) | $($_.Message -replace '\r?\n',' ')"}) -join "`n"}else{'No Windows Update error-level events found in the last 30 days.'}; $out.Add((New-RBZFinding -Category 'Updates' -Name 'Recent update failures' -Status $status -Summary "$($failed.Count) Windows Update error event(s) in the last 30 days." -Details $details -Recommendation $(if($failed.Count){'Review failed update events if Windows Update is repeatedly unsuccessful.'}else{''})))} catch {$out.Add((New-RBZFinding -Category 'Updates' -Name 'Recent update failures' -Status 'Info' -Summary 'Windows Update event history was unavailable.' -Details $_.Exception.Message))}
+    $pending=$false; $paths=@('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired','HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending'); foreach($p in $paths){if(Test-Path $p){$pending=$true}}
+    $out.Add((New-RBZFinding -Category 'Updates' -Name 'Pending restart' -Status $(if($pending){'Recommend'}else{'Healthy'}) -Summary $(if($pending){'Windows indicates a restart is pending.'}else{'No common pending-restart indicators detected.'}) -Recommendation $(if($pending){'Restart the device after confirming with the customer.'}else{''})))
     return $out
 }
 Export-ModuleMember -Function Get-RBZUpdateFindings

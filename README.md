@@ -1,23 +1,21 @@
-# RBZ PC Health v0.2
+# RBZ PC Health v0.2.2
 
 Scan-only Windows technician diagnostic tool for RBZ Tech Solutions Ltd.
 
-## v0.2 changes
+## v0.2.2 changes
 
-- Redesigned technician dashboard with health score, status counts, Attention and All Results tabs.
-- Finding detail pane for technical evidence and recommendations.
-- Replaced ICMP/ping internet test with HTTPS connectivity testing.
-- Device Manager findings now identify individual problem devices and attempt to include problem codes.
-- Expanded system inventory, BIOS information, physical disk detail and network configuration.
-- Added Secure Boot, TPM and BitLocker checks.
-- Defender check now considers real-time protection and signature age.
-- Weighted category scoring controlled by `Config/settings.json`.
-- Improved HTML/JSON reports with score label, status counts and detailed findings.
-- Still scan-only: v0.2 does not automatically repair or change the customer device.
+- Separates DNS, TCP 443 reachability, and HTTPS certificate/session validation.
+- TLS trust failures no longer incorrectly report that internet access itself is unavailable when DNS and TCP connectivity succeed.
+- Physical disks are identified by disk ID and serial suffix to distinguish identical models.
+- Startup applications are listed in finding details.
+- Windows Update reports latest installed update, pending updates, recent failed update events, and pending restart state.
+- Customer report puts Needs Attention first.
+- Customer, device and unique scan ID are displayed at the top of reports.
+- Score explanation shows category-level deductions.
+- Full hardware serial numbers remain in technician JSON but are hidden from customer HTML by default.
+- GUI version is read dynamically from settings.json.
 
 ## Bootstrap
-
-Open Windows PowerShell as Administrator:
 
 ```powershell
 irm https://raw.githubusercontent.com/rbznet/RBZTechSolutions/main/bootstrap.ps1 | iex
@@ -30,60 +28,17 @@ Set-ExecutionPolicy -Scope Process Bypass -Force
 .\RBZHealth.ps1
 ```
 
-CLI:
-
-```powershell
-.\RBZHealth.ps1 -NoGui -Customer "Test Customer"
-```
-
-## Configuration
-
-Edit `Config/settings.json`.
-
-The configuration controls:
-
-- application version
-- paths
-- GitHub release endpoints
-- enabled checks
-- network test endpoint
-- diagnostic thresholds
-- category scoring weights
-- status scoring factors
-
-## Release process
-
-1. Update `app.version` in `Config/settings.json`.
-2. Run:
+## Release
 
 ```powershell
 .\build-release.ps1
-```
 
-3. Create a GitHub release using the same version:
-
-```powershell
-gh release create v0.2.0 `
-  ".\dist\RBZ-PC-Health-0.2.0.zip" `
-  ".\dist\RBZ-PC-Health-0.2.0.sha256" `
+gh release create v0.2.2 `
+  ".\dist\RBZ-PC-Health-0.2.2.zip" `
+  ".\dist\RBZ-PC-Health-0.2.2.sha256" `
   --repo rbznet/RBZTechSolutions `
-  --title "RBZ PC Health v0.2.0" `
-  --notes "v0.2 diagnostic and dashboard upgrade."
+  --title "RBZ PC Health v0.2.2" `
+  --notes "v0.2.2 diagnostic and reporting refinements."
 ```
 
-The bootstrapper reads the latest GitHub Release, validates SHA256, extracts the package and launches `RBZHealth.ps1`.
-
-## Safety model
-
-v0.2 performs diagnostics and reporting only. It does not:
-
-- remove software
-- disable startup entries
-- modify services
-- install drivers
-- modify the registry
-- delete customer data
-- install Windows updates
-- run SFC/DISM repairs
-
-Remediation will be introduced only after the diagnostic engine has been tested across multiple Windows systems.
+v0.2.2 remains scan-only and does not automatically change the customer device.
