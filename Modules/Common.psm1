@@ -1,10 +1,5 @@
 Set-StrictMode -Version Latest
 
-function ConvertTo-RBZStatus {
-    param([ValidateSet('Healthy','Warning','Critical','Info')][string]$State)
-    [pscustomobject]@{ State = $State }
-}
-
 function Get-RBZConfig {
     param([Parameter(Mandatory)][string]$Path)
     if (-not (Test-Path $Path)) { throw "Configuration file not found: $Path" }
@@ -22,18 +17,24 @@ function New-RBZFinding {
     param(
         [Parameter(Mandatory)][string]$Category,
         [Parameter(Mandatory)][string]$Name,
-        [Parameter(Mandatory)][ValidateSet('Healthy','Warning','Critical','Info')][string]$Status,
+        [Parameter(Mandatory)][ValidateSet('Healthy','Info','Recommend','Warning','Critical')][string]$Status,
         [Parameter(Mandatory)][string]$Summary,
         [object]$Value = $null,
-        [string]$Recommendation = ''
+        [string]$Details = '',
+        [string]$Recommendation = '',
+        [bool]$CanRemediate = $false,
+        [string]$RemediationId = ''
     )
     [pscustomobject]@{
         Category = $Category
         Name = $Name
         Status = $Status
         Summary = $Summary
+        Details = $Details
         Value = $Value
         Recommendation = $Recommendation
+        CanRemediate = $CanRemediate
+        RemediationId = $RemediationId
     }
 }
 

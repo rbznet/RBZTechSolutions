@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "RBZ PC Health",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "company": "RBZ Tech Solutions Ltd",
     "reportPrefix": "RBZ-PC-Health",
     "requireAdmin": true,
@@ -35,17 +35,41 @@
     "networkTests": true,
     "storageHealth": true,
     "eventLogSummary": true,
-    "installedSoftware": true
+    "installedSoftware": true,
+    "secureBoot": true,
+    "tpm": true,
+    "bitLocker": true
   },
   "network": {
-    "internetTestHost": "1.1.1.1",
-    "dnsTestName": "www.microsoft.com"
+    "httpsTestUrl": "https://www.msftconnecttest.com/connecttest.txt",
+    "dnsTestName": "www.microsoft.com",
+    "timeoutSeconds": 8
   },
   "thresholds": {
     "systemDriveFreePercentWarning": 20,
     "systemDriveFreePercentCritical": 10,
     "memoryGBWarning": 8,
     "batteryHealthWarningPercent": 70,
-    "uptimeDaysWarning": 14
+    "uptimeDaysWarning": 14,
+    "defenderSignatureAgeWarningDays": 3
+  },
+  "scoring": {
+    "categoryWeights": {
+      "System": 15,
+      "Storage": 15,
+      "Security": 25,
+      "Network": 10,
+      "Devices": 10,
+      "Battery": 5,
+      "Startup": 5,
+      "Updates": 15
+    },
+    "statusFactors": {
+      "Healthy": 1.0,
+      "Info": 1.0,
+      "Recommend": 0.9,
+      "Warning": 0.7,
+      "Critical": 0.25
+    }
   }
 }

@@ -1,21 +1,51 @@
 function Get-RBZNetworkFindings {
     param($Config)
     $out = [System.Collections.Generic.List[object]]::new()
+
     try {
         $up = @(Get-NetAdapter -Physical -ErrorAction Stop | Where-Object Status -eq 'Up')
-        if($up.Count){$out.Add((New-RBZFinding -Category 'Network' -Name 'Active adapters' -Status 'Healthy' -Summary (($up | ForEach-Object {"$($_.Name) ($($_.LinkSpeed))"}) -join '; ')))}
-        else {$out.Add((New-RBZFinding -Category 'Network' -Name 'Active adapters' -Status 'Warning' -Summary 'No active physical network adapter detected.'))}
-    } catch {}
+        if($up.Count){
+            foreach($adapter in $up){
+                $ip = Get-NetIPConfiguration -InterfaceIndex $adapter.ifIndex -ErrorAction SilentlyContinue
+                $ipv4 = ($ip.IPv4Address.IPAddress -join ', ')
+                $gw = ($ip.IPv4DefaultGateway.NextHop -join ', ')
+                $dns = ((Get-DnsClientServerAddress -InterfaceIndex $adapter.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue).ServerAddresses -join ', ')
+                $details = "Adapter: $($adapter.Name)`nDescription: $($adapter.InterfaceDescription)`nLink speed: $($adapter.LinkSpeed)`nIPv4: $ipv4`nGateway: $gw`nDNS: $dns"
+                $out.Add((New-RBZFinding -Category 'Network' -Name 'Active adapter' -Status 'Healthy' `
+                    -Summary "$($adapter.Name) ($($adapter.LinkSpeed))" -Details $details))
+            }
+        } else {
+            $out.Add((New-RBZFinding -Category 'Network' -Name 'Active adapter' -Status 'Warning' -Summary 'No active physical network adapter detected.'))
+        }
+    } catch {
+        $out.Add((New-RBZFinding -Category 'Network' -Name 'Adapter inventory' -Status 'Info' -Summary 'Network adapter details unavailable.' -Details $_.Exception.Message))
+    }
 
-    try {
-        $ping = Test-Connection -ComputerName $Config.network.internetTestHost -Count 1 -Quiet -ErrorAction Stop
-        $out.Add((New-RBZFinding -Category 'Network' -Name 'Internet reachability' -Status $(if($ping){'Healthy'}else{'Warning'}) -Summary $(if($ping){"Reachable: $($Config.network.internetTestHost)"}else{"Unable to reach $($Config.network.internetTestHost)"})))
-    } catch { $out.Add((New-RBZFinding -Category 'Network' -Name 'Internet reachability' -Status 'Warning' -Summary 'Internet reachability test failed.')) }
+    if($Config.scan.networkTests){
+        try {
+            $timeout = [int]$Config.network.timeoutSeconds
+            $response = Invoke-WebRequest -Uri $Config.network.httpsTestUrl -UseBasicParsing -TimeoutSec $timeout -ErrorAction Stop
+            $ok = $response.StatusCode -ge 200 -and $response.StatusCode -lt 400
+            $out.Add((New-RBZFinding -Category 'Network' -Name 'Internet access (HTTPS)' -Status $(if($ok){'Healthy'}else{'Warning'}) `
+                -Summary $(if($ok){"HTTPS connectivity confirmed (HTTP $($response.StatusCode))."}else{"HTTPS test returned HTTP $($response.StatusCode)."}) `
+                -Details "Test URL: $($Config.network.httpsTestUrl)"))
+        } catch {
+            $out.Add((New-RBZFinding -Category 'Network' -Name 'Internet access (HTTPS)' -Status 'Warning' `
+                -Summary 'HTTPS connectivity test failed.' -Details $_.Exception.Message `
+                -Recommendation 'Confirm internet access, proxy settings, captive portal, or firewall policy.'))
+        }
 
-    try {
-        Resolve-DnsName -Name $Config.network.dnsTestName -ErrorAction Stop | Out-Null
-        $out.Add((New-RBZFinding -Category 'Network' -Name 'DNS resolution' -Status 'Healthy' -Summary "Resolved $($Config.network.dnsTestName) successfully."))
-    } catch { $out.Add((New-RBZFinding -Category 'Network' -Name 'DNS resolution' -Status 'Warning' -Summary "Could not resolve $($Config.network.dnsTestName)." -Recommendation 'Check DNS settings and network connectivity.')) }
+        try {
+            $resolved = @(Resolve-DnsName -Name $Config.network.dnsTestName -Type A -ErrorAction Stop | Where-Object IPAddress)
+            $ips = ($resolved.IPAddress -join ', ')
+            $out.Add((New-RBZFinding -Category 'Network' -Name 'DNS resolution' -Status 'Healthy' `
+                -Summary "Resolved $($Config.network.dnsTestName) successfully." -Details "Addresses: $ips"))
+        } catch {
+            $out.Add((New-RBZFinding -Category 'Network' -Name 'DNS resolution' -Status 'Warning' `
+                -Summary "Could not resolve $($Config.network.dnsTestName)." -Details $_.Exception.Message `
+                -Recommendation 'Check DNS server configuration and network connectivity.'))
+        }
+    }
     return $out
 }
 Export-ModuleMember -Function Get-RBZNetworkFindings
