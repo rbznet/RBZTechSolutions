@@ -99,8 +99,24 @@ Add-Type -AssemblyName PresentationFramework
 <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="110"/><DataGridTextColumn Header="Check" Binding="{Binding Name}" Width="235"/><DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="95"/><DataGridTextColumn Header="Summary" Binding="{Binding Summary}" Width="*"/><DataGridTextColumn Header="Recommendation" Binding="{Binding Recommendation}" Width="280"/>
 </DataGrid.Columns></DataGrid></TabItem>
 
+<TabItem Header="Before / After"><Grid Margin="10">
+<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+<Border Background="#F9FAFB" BorderBrush="#E5E7EB" BorderThickness="1" Padding="14" CornerRadius="8"><Grid>
+<Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+<StackPanel><TextBlock Text="BASELINE" Foreground="#6B7280" FontSize="11"/><TextBlock Name="BaselineScoreText" Text="Not set" FontSize="24" FontWeight="Bold"/></StackPanel>
+<StackPanel Grid.Column="1"><TextBlock Text="CURRENT" Foreground="#6B7280" FontSize="11"/><TextBlock Name="CurrentScoreText" Text="Not set" FontSize="24" FontWeight="Bold"/></StackPanel>
+<StackPanel Grid.Column="2"><TextBlock Text="CHANGE" Foreground="#6B7280" FontSize="11"/><TextBlock Name="ScoreChangeText" Text="-" FontSize="24" FontWeight="Bold"/></StackPanel>
+<StackPanel Grid.Column="3"><TextBlock Text="SCAN COUNT" Foreground="#6B7280" FontSize="11"/><TextBlock Name="ScanCountText" Text="0" FontSize="24" FontWeight="Bold"/></StackPanel>
+</Grid></Border>
+<TextBlock Grid.Row="1" Name="ComparisonSummaryText" Text="The first scan in this session becomes the baseline. Run another scan after service work to compare results." Foreground="#6B7280" Margin="0,12,0,10" TextWrapping="Wrap"/>
+<DataGrid Grid.Row="2" Name="ComparisonGrid" AutoGenerateColumns="False" IsReadOnly="True"><DataGrid.Columns>
+<DataGridTextColumn Header="Change" Binding="{Binding Change}" Width="90"/><DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="100"/><DataGridTextColumn Header="Check" Binding="{Binding Check}" Width="210"/><DataGridTextColumn Header="Before" Binding="{Binding BeforeStatus}" Width="100"/><DataGridTextColumn Header="After" Binding="{Binding AfterStatus}" Width="100"/><DataGridTextColumn Header="Current finding" Binding="{Binding AfterSummary}" Width="*"/>
+</DataGrid.Columns></DataGrid>
+<StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,10,0,0"><Button Name="SetBaselineButton" Content="Set Current as Baseline" Width="165" Height="32" IsEnabled="False"/><Button Name="ClearHistoryButton" Content="Clear Session History" Width="145" Height="32" Margin="8,0,0,0"/></StackPanel>
+</Grid></TabItem>
+
 <TabItem Header="Repair Centre"><Grid Margin="10"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="160"/></Grid.RowDefinitions>
-<TextBlock Text="Only low-risk technician-approved actions are available in v0.3.1. Select actions explicitly before running them." Foreground="#6B7280" Margin="0,0,0,10"/>
+<TextBlock Text="Low-risk technician-approved actions only. Run a new scan after service actions to create an after-service comparison." Foreground="#6B7280" Margin="0,0,0,10"/>
 <DataGrid Grid.Row="1" Name="ActionGrid" AutoGenerateColumns="False" CanUserAddRows="False"><DataGrid.Columns>
 <DataGridCheckBoxColumn Header="Run" Binding="{Binding Selected}" Width="55"/>
 <DataGridTextColumn Header="Category" Binding="{Binding Category}" IsReadOnly="True" Width="100"/>
@@ -119,7 +135,7 @@ Add-Type -AssemblyName PresentationFramework
 
 $reader=New-Object System.Xml.XmlNodeReader $xaml
 $window=[Windows.Markup.XamlReader]::Load($reader)
-foreach($name in @('CustomerBox','JobBox','ScanButton','CustomerReportButton','TechnicianReportButton','OpenReportsButton','ResultsGrid','AttentionGrid','ScoreText','ScoreLabel','StatusText','Progress','DeviceText','VersionText','HealthyCount','InfoCount','RecommendCount','WarningCount','CriticalCount','TotalCount','DetailTitle','DetailStatus','DetailSummary','DetailBody','DetailRecommendation','CopyDetailsButton','ActionGrid','RunActionsButton','ActionStatusText','ActionLogBox')){Set-Variable -Name $name -Value $window.FindName($name)}
+foreach($name in @('CustomerBox','JobBox','ScanButton','CustomerReportButton','TechnicianReportButton','OpenReportsButton','ResultsGrid','AttentionGrid','ScoreText','ScoreLabel','StatusText','Progress','DeviceText','VersionText','HealthyCount','InfoCount','RecommendCount','WarningCount','CriticalCount','TotalCount','DetailTitle','DetailStatus','DetailSummary','DetailBody','DetailRecommendation','CopyDetailsButton','ActionGrid','RunActionsButton','ActionStatusText','ActionLogBox','BaselineScoreText','CurrentScoreText','ScoreChangeText','ScanCountText','ComparisonSummaryText','ComparisonGrid','SetBaselineButton','ClearHistoryButton')){Set-Variable -Name $name -Value $window.FindName($name)}
 
 if($Customer){$CustomerBox.Text=$Customer}
 $VersionText.Text="$($Config.app.productSubtitle) | v$($Config.app.version)"
@@ -128,6 +144,9 @@ $script:Findings=$null
 $script:ServiceLog=[System.Collections.Generic.List[object]]::new()
 $script:Actions=@(Get-RBZServiceActions -Config $Config)
 $ActionGrid.ItemsSource=$script:Actions
+$script:ScanHistory=[System.Collections.Generic.List[object]]::new()
+$script:BaselineSnapshot=$null
+$script:CurrentSnapshot=$null
 
 function Show-RBZDetail($Finding){
     if($null -eq $Finding){return}
@@ -138,10 +157,35 @@ function Show-RBZDetail($Finding){
 $AttentionGrid.Add_SelectionChanged({if($AttentionGrid.SelectedItem){Show-RBZDetail $AttentionGrid.SelectedItem}})
 $CopyDetailsButton.Add_Click({if($AttentionGrid.SelectedItem){$f=$AttentionGrid.SelectedItem;[Windows.Clipboard]::SetText("Status: $($f.Status)`r`nCategory: $($f.Category)`r`nCheck: $($f.Name)`r`nSummary: $($f.Summary)`r`n`r`nDetails:`r`n$($f.Details)`r`n`r`nRecommendation:`r`n$($f.Recommendation)");$StatusText.Text='Finding details copied to clipboard.'}})
 
+function Update-RBZComparisonView {
+    $ScanCountText.Text=$script:ScanHistory.Count
+    if($script:BaselineSnapshot){$BaselineScoreText.Text="$($script:BaselineSnapshot.Score)/100"}else{$BaselineScoreText.Text='Not set'}
+    if($script:CurrentSnapshot){$CurrentScoreText.Text="$($script:CurrentSnapshot.Score)/100";$SetBaselineButton.IsEnabled=$true}else{$CurrentScoreText.Text='Not set';$SetBaselineButton.IsEnabled=$false}
+    if($script:BaselineSnapshot -and $script:CurrentSnapshot){
+        $cmp=Get-RBZComparisonSummary -Baseline $script:BaselineSnapshot -Current $script:CurrentSnapshot
+        $delta=[int]$cmp.ScoreChange
+        $ScoreChangeText.Text=$(if($delta -gt 0){"+$delta"}else{"$delta"})
+        $ComparisonGrid.ItemsSource=@($cmp.Changes)
+        $ComparisonSummaryText.Text="Improved: $($cmp.Improved) | Worsened: $($cmp.Worsened) | New: $($cmp.New) | Removed: $($cmp.Removed) | Updated: $($cmp.Updated)"
+    }else{
+        $ScoreChangeText.Text='-';$ComparisonGrid.ItemsSource=$null
+        $ComparisonSummaryText.Text='The first scan in this session becomes the baseline. Run another scan after service work to compare results.'
+    }
+}
+
+$SetBaselineButton.Add_Click({if($script:CurrentSnapshot){$script:BaselineSnapshot=$script:CurrentSnapshot;Update-RBZComparisonView;$StatusText.Text='Current scan set as the new baseline.'}})
+$ClearHistoryButton.Add_Click({$script:ScanHistory.Clear();$script:BaselineSnapshot=$null;$script:CurrentSnapshot=$null;Update-RBZComparisonView;$StatusText.Text='Session scan history cleared.'})
+
 $ScanButton.Add_Click({
     try{
         $StatusText.Text='Scanning system...';$Progress.Visibility='Visible';$ScanButton.IsEnabled=$false;$window.Cursor='Wait'
         $script:Findings=Invoke-RBZScan;$ResultsGrid.ItemsSource=$script:Findings
+        $snapshot=New-RBZScanSnapshot -Findings $script:Findings -Config $Config -Sequence ($script:ScanHistory.Count+1)
+        $script:ScanHistory.Add($snapshot)
+        while($script:ScanHistory.Count -gt [int]$Config.session.maxInMemoryScans){$script:ScanHistory.RemoveAt(0)}
+        if(-not $script:BaselineSnapshot -and $Config.session.autoSetFirstScanAsBaseline){$script:BaselineSnapshot=$snapshot}
+        $script:CurrentSnapshot=$snapshot
+        Update-RBZComparisonView
         $rank=@{'Critical'=0;'Warning'=1;'Recommend'=2}
         $attention=@($script:Findings|Where-Object Status -in @('Recommend','Warning','Critical')|Sort-Object @{Expression={$rank[$_.Status]}},Category,Name)
         $AttentionGrid.ItemsSource=$attention
@@ -195,7 +239,9 @@ function New-RBZSelectedReport {
             -Customer $CustomerBox.Text `
             -JobReference $JobBox.Text `
             -Audience $Audience `
-            -ServiceLog @($script:ServiceLog)
+            -ServiceLog @($script:ServiceLog) `
+            -BaselineSnapshot $script:BaselineSnapshot `
+            -CurrentSnapshot $script:CurrentSnapshot
 
         $StatusText.Text="$Audience report saved: $($r.Html)"
         Start-Process $r.Html

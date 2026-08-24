@@ -1,0 +1,41 @@
+RBZ PC Health v0.4.0 update
+
+Replace/add:
+- Config\settings.json
+- Modules\Session.psm1       NEW
+- Modules\Report.psm1
+- RBZHealth.ps1
+- README.md
+
+Keep all v0.3.1 diagnostic modules and Modules\Service.psm1.
+
+Then:
+git status
+git diff
+git add .
+git commit -m "RBZ PC Health v0.4.0 before and after comparison"
+git push
+
+Test locally:
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\RBZHealth.ps1
+
+Test:
+1. First scan sets baseline.
+2. Second scan creates comparison.
+3. Before / After tab populates.
+4. Customer report includes comparison.
+5. Technician report includes comparison.
+6. Repair Centre still works.
+7. Set Current as Baseline works.
+8. Clear Session History works.
+
+If good:
+.\build-release.ps1
+
+gh release create v0.4.0 `
+  ".\dist\RBZ-PC-Health-0.4.0.zip" `
+  ".\dist\RBZ-PC-Health-0.4.0.sha256" `
+  --repo rbznet/RBZTechSolutions `
+  --title "RBZ PC Health v0.4.0" `
+  --notes "Add session scan history and before/after service comparison."

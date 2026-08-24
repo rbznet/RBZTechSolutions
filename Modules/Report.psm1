@@ -81,7 +81,9 @@ function Export-RBZReport {
         [string]$Customer='',
         [string]$JobReference='',
         [ValidateSet('Customer','Technician')][string]$Audience='Customer',
-        [object[]]$ServiceLog=@()
+        [object[]]$ServiceLog=@(),
+        $BaselineSnapshot=$null,
+        $CurrentSnapshot=$null
     )
 
     Add-Type -AssemblyName System.Web
@@ -122,6 +124,9 @@ function Export-RBZReport {
         CategoryBreakdown=$breakdown
         Findings=$Findings
         ServiceLog=$ServiceLog
+        BaselineSnapshot=$BaselineSnapshot
+        CurrentSnapshot=$CurrentSnapshot
+        Comparison=$(if($BaselineSnapshot -and $CurrentSnapshot){Get-RBZComparisonSummary -Baseline $BaselineSnapshot -Current $CurrentSnapshot}else{$null})
     }
     $payload | ConvertTo-Json -Depth 12 | Set-Content -Encoding UTF8 $jsonPath
 
@@ -153,6 +158,33 @@ function Export-RBZReport {
         $serviceSection="<h2>Service Actions Performed</h2><table><thead><tr><th>Action</th><th>Result</th><th>Summary</th><th>Started</th></tr></thead><tbody>$($serviceRows -join "`n")</tbody></table>"
     }
 
+    $comparisonSection=''
+    if($BaselineSnapshot -and $CurrentSnapshot -and $Config.session.includeComparisonInReports){
+        $comparison=Get-RBZComparisonSummary -Baseline $BaselineSnapshot -Current $CurrentSnapshot
+        $delta=[int]$comparison.ScoreChange
+        $deltaText=if($delta -gt 0){"+$delta"}else{"$delta"}
+        $deltaClass=if($delta -gt 0){'deltaGood'}elseif($delta -lt 0){'deltaBad'}else{'deltaNeutral'}
+        $changeRows=foreach($c in @($comparison.Changes)){
+            if($Audience -eq 'Customer' -and $c.Change -eq 'Updated'){continue}
+            $before=[System.Web.HttpUtility]::HtmlEncode([string]$c.BeforeStatus)
+            $after=[System.Web.HttpUtility]::HtmlEncode([string]$c.AfterStatus)
+            $check=[System.Web.HttpUtility]::HtmlEncode([string]$c.Check)
+            "<tr><td>$($c.Category)</td><td>$check</td><td>$before</td><td>$after</td><td>$($c.Change)</td></tr>"
+        }
+        $rowsText=if(@($changeRows).Count){$changeRows -join "`n"}else{"<tr><td colspan='5'>No material finding changes were detected between scans.</td></tr>"}
+        $comparisonSection=@"
+<h2>Before / After</h2>
+<div class='compareCards'>
+<div class='compareCard'><div class='compareLabel'>Before</div><div class='compareScore'>$($comparison.BaselineScore)/100</div></div>
+<div class='compareArrow'>-&gt;</div>
+<div class='compareCard'><div class='compareLabel'>After</div><div class='compareScore'>$($comparison.CurrentScore)/100</div></div>
+<div class='compareCard'><div class='compareLabel'>Change</div><div class='compareScore $deltaClass'>$deltaText</div></div>
+</div>
+<div class='details'>Improved: $($comparison.Improved) | Worsened: $($comparison.Worsened) | New: $($comparison.New) | Removed: $($comparison.Removed)</div>
+<table><thead><tr><th>Category</th><th>Check</th><th>Before</th><th>After</th><th>Change</th></tr></thead><tbody>$rowsText</tbody></table>
+"@
+    }
+
     $scoreSection=''
     if($Audience -eq 'Technician'){
         $breakdownRows=foreach($b in $breakdown){
@@ -178,6 +210,7 @@ body{font-family:Segoe UI,Arial,sans-serif;margin:0;background:#f3f4f6;color:#11
 h2{margin-top:32px}table{border-collapse:collapse;width:100%;font-size:13px;margin-bottom:18px}th,td{border-bottom:1px solid #e5e7eb;padding:10px;vertical-align:top}th{background:#f9fafb;text-align:left}
 .badge{padding:3px 8px;border-radius:999px;font-weight:600;font-size:12px}.healthy{background:#dcfce7}.info{background:#e0f2fe}.recommend{background:#fef3c7}.warning{background:#fed7aa}.critical{background:#fee2e2}
 .details{color:#6b7280;font-size:12px;margin-top:5px}.attentionBox{border:1px solid #fed7aa;background:#fffaf5;border-radius:10px;padding:16px}.scoreExplain{border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin-top:20px}
+.compareCards{display:flex;gap:14px;align-items:center;margin:14px 0}.compareCard{padding:14px 18px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:9px;min-width:120px}.compareLabel{font-size:11px;color:#6b7280;text-transform:uppercase}.compareScore{font-size:27px;font-weight:800;margin-top:3px}.compareArrow{font-size:24px;color:#6b7280}.deltaGood{color:#15803d}.deltaBad{color:#b91c1c}.deltaNeutral{color:#374151}
 footer{margin-top:34px;padding-top:16px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:12px}
 @media print{body{background:#fff}.wrap{box-shadow:none;margin:0;max-width:none}.top{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
 </style></head><body>
@@ -191,6 +224,7 @@ footer{margin-top:34px;padding-top:16px;border-top:1px solid #e5e7eb;color:#6b72
 </div>
 <div class='scorecard'><div class='score'>$score/100</div><div><div class='label'>$label</div><div class='counts'>Healthy $($counts.Healthy) | Recommend $($counts.Recommend) | Warning $($counts.Warning) | Critical $($counts.Critical)</div></div></div>
 <h2>Needs Attention</h2><div class='attentionBox'><table><thead><tr><th>Category</th><th>Check</th><th>Status</th><th>Finding</th><th>Recommendation</th></tr></thead><tbody>$attentionRows</tbody></table></div>
+$comparisonSection
 $serviceSection
 $scoreSection
 <h2>Diagnostic Results</h2>
