@@ -1,0 +1,28 @@
+Replace:
+- Config\settings.json
+- Modules\Network.psm1
+- Modules\Updates.psm1
+- Modules\Security.psm1
+- RBZHealth.ps1
+- README.md
+
+Then:
+git status
+git diff
+git add .
+git commit -m "RBZ PC Health v0.2.3 accuracy and GUI polish"
+git push
+
+Test locally:
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\RBZHealth.ps1
+
+If good:
+.\build-release.ps1
+
+gh release create v0.2.3 `
+  ".\dist\RBZ-PC-Health-0.2.3.zip" `
+  ".\dist\RBZ-PC-Health-0.2.3.sha256" `
+  --repo rbznet/RBZTechSolutions `
+  --title "RBZ PC Health v0.2.3" `
+  --notes "v0.2.3 accuracy and GUI polish."
