@@ -60,14 +60,16 @@ Add-Type -AssemblyName PresentationFramework
 </Grid></Border>
 
 <Border Grid.Row="1" Margin="18,16,18,10" Background="White" Padding="16" CornerRadius="8"><Grid>
-<Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="240"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="180"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+<Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="220"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="160"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
 <TextBlock Text="Customer:" VerticalAlignment="Center" FontWeight="SemiBold"/>
 <TextBox Grid.Column="1" Name="CustomerBox" Margin="8,0,16,0" Height="32" Padding="8,5"/>
 <TextBlock Grid.Column="2" Text="Job ref:" VerticalAlignment="Center" FontWeight="SemiBold"/>
 <TextBox Grid.Column="3" Name="JobBox" Margin="8,0,16,0" Height="32" Padding="8,5"/>
-<Button Grid.Column="4" Name="ScanButton" Content="Run Full Scan" Width="120" Height="34"/>
-<Button Grid.Column="5" Name="ReportButton" Content="Reports" Width="95" Height="34" Margin="8,0,0,0" IsEnabled="False"/>
-<StackPanel Grid.Column="6" HorizontalAlignment="Right"><TextBlock Name="ScoreText" FontSize="24" FontWeight="Bold" HorizontalAlignment="Right"/><TextBlock Name="ScoreLabel" Foreground="#6B7280" HorizontalAlignment="Right"/></StackPanel>
+<Button Grid.Column="4" Name="ScanButton" Content="Run Full Scan" Width="115" Height="34"/>
+<Button Grid.Column="5" Name="CustomerReportButton" Content="Customer Report" Width="125" Height="34" Margin="8,0,0,0" IsEnabled="False"/>
+<Button Grid.Column="6" Name="TechnicianReportButton" Content="Technician Report" Width="135" Height="34" Margin="8,0,0,0" IsEnabled="False"/>
+<Button Grid.Column="7" Name="OpenReportsButton" Content="Open Reports" Width="105" Height="34" Margin="8,0,0,0"/>
+<StackPanel Grid.Column="8" HorizontalAlignment="Right"><TextBlock Name="ScoreText" FontSize="24" FontWeight="Bold" HorizontalAlignment="Right"/><TextBlock Name="ScoreLabel" Foreground="#6B7280" HorizontalAlignment="Right"/></StackPanel>
 </Grid></Border>
 
 <Border Grid.Row="2" Margin="18,0,18,10" Background="White" Padding="14" CornerRadius="8"><Grid>
@@ -98,7 +100,7 @@ Add-Type -AssemblyName PresentationFramework
 </DataGrid.Columns></DataGrid></TabItem>
 
 <TabItem Header="Repair Centre"><Grid Margin="10"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="160"/></Grid.RowDefinitions>
-<TextBlock Text="Only low-risk technician-approved actions are available in v0.3.0. Select actions explicitly before running them." Foreground="#6B7280" Margin="0,0,0,10"/>
+<TextBlock Text="Only low-risk technician-approved actions are available in v0.3.1. Select actions explicitly before running them." Foreground="#6B7280" Margin="0,0,0,10"/>
 <DataGrid Grid.Row="1" Name="ActionGrid" AutoGenerateColumns="False" CanUserAddRows="False"><DataGrid.Columns>
 <DataGridCheckBoxColumn Header="Run" Binding="{Binding Selected}" Width="55"/>
 <DataGridTextColumn Header="Category" Binding="{Binding Category}" IsReadOnly="True" Width="100"/>
@@ -117,7 +119,7 @@ Add-Type -AssemblyName PresentationFramework
 
 $reader=New-Object System.Xml.XmlNodeReader $xaml
 $window=[Windows.Markup.XamlReader]::Load($reader)
-foreach($name in @('CustomerBox','JobBox','ScanButton','ReportButton','ResultsGrid','AttentionGrid','ScoreText','ScoreLabel','StatusText','Progress','DeviceText','VersionText','HealthyCount','InfoCount','RecommendCount','WarningCount','CriticalCount','TotalCount','DetailTitle','DetailStatus','DetailSummary','DetailBody','DetailRecommendation','CopyDetailsButton','ActionGrid','RunActionsButton','ActionStatusText','ActionLogBox')){Set-Variable -Name $name -Value $window.FindName($name)}
+foreach($name in @('CustomerBox','JobBox','ScanButton','CustomerReportButton','TechnicianReportButton','OpenReportsButton','ResultsGrid','AttentionGrid','ScoreText','ScoreLabel','StatusText','Progress','DeviceText','VersionText','HealthyCount','InfoCount','RecommendCount','WarningCount','CriticalCount','TotalCount','DetailTitle','DetailStatus','DetailSummary','DetailBody','DetailRecommendation','CopyDetailsButton','ActionGrid','RunActionsButton','ActionStatusText','ActionLogBox')){Set-Variable -Name $name -Value $window.FindName($name)}
 
 if($Customer){$CustomerBox.Text=$Customer}
 $VersionText.Text="$($Config.app.productSubtitle) | v$($Config.app.version)"
@@ -148,7 +150,7 @@ $ScanButton.Add_Click({
         $RecommendCount.Text=@($script:Findings|Where-Object Status -eq 'Recommend').Count;$WarningCount.Text=@($script:Findings|Where-Object Status -eq 'Warning').Count
         $CriticalCount.Text=@($script:Findings|Where-Object Status -eq 'Critical').Count;$TotalCount.Text=$script:Findings.Count
         if($attention.Count){$AttentionGrid.SelectedIndex=0}
-        $ReportButton.IsEnabled=$true;$RunActionsButton.IsEnabled=[bool]$Config.remediation.enabled
+        $CustomerReportButton.IsEnabled=$true;$TechnicianReportButton.IsEnabled=$true;$RunActionsButton.IsEnabled=[bool]$Config.remediation.enabled
         $StatusText.Text="Scan complete: $($script:Findings.Count) checks."
     }catch{[System.Windows.MessageBox]::Show($_.Exception.Message,'RBZ PC Health')|Out-Null;$StatusText.Text='Scan failed.'}
     finally{$Progress.Visibility='Collapsed';$window.Cursor=$null;$ScanButton.IsEnabled=$true}
@@ -177,13 +179,49 @@ $RunActionsButton.Add_Click({
     }finally{$window.Cursor=$null;$RunActionsButton.IsEnabled=$true}
 })
 
-$ReportButton.Add_Click({
-    if(-not $script:Findings){return}
-    $choice=[System.Windows.MessageBox]::Show('Generate CUSTOMER report?`n`nYes = Customer report`nNo = Technician report','RBZ PC Health - Report Type',[System.Windows.MessageBoxButton]::YesNoCancel,[System.Windows.MessageBoxImage]::Question)
-    if($choice -eq [System.Windows.MessageBoxResult]::Cancel){return}
-    $audience=if($choice -eq [System.Windows.MessageBoxResult]::Yes){'Customer'}else{'Technician'}
-    try{$r=Export-RBZReport -Findings $script:Findings -Config $Config -ReportsPath $reportsPath -Customer $CustomerBox.Text -JobReference $JobBox.Text -Audience $audience -ServiceLog @($script:ServiceLog);$StatusText.Text="$audience report saved: $($r.Html)";Start-Process $r.Html}
-    catch{[System.Windows.MessageBox]::Show($_.Exception.Message,'RBZ PC Health')|Out-Null}
+function New-RBZSelectedReport {
+    param([ValidateSet('Customer','Technician')][string]$Audience)
+
+    if(-not $script:Findings){
+        [System.Windows.MessageBox]::Show('Run a scan before generating a report.','RBZ PC Health')|Out-Null
+        return
+    }
+
+    try {
+        $r = Export-RBZReport `
+            -Findings $script:Findings `
+            -Config $Config `
+            -ReportsPath $reportsPath `
+            -Customer $CustomerBox.Text `
+            -JobReference $JobBox.Text `
+            -Audience $Audience `
+            -ServiceLog @($script:ServiceLog)
+
+        $StatusText.Text="$Audience report saved: $($r.Html)"
+        Start-Process $r.Html
+    } catch {
+        [System.Windows.MessageBox]::Show($_.Exception.Message,'RBZ PC Health')|Out-Null
+    }
+}
+
+$CustomerReportButton.Add_Click({
+    New-RBZSelectedReport -Audience 'Customer'
+})
+
+$TechnicianReportButton.Add_Click({
+    New-RBZSelectedReport -Audience 'Technician'
+})
+
+$OpenReportsButton.Add_Click({
+    try {
+        if(-not(Test-Path $reportsPath)){
+            New-Item -ItemType Directory -Path $reportsPath -Force | Out-Null
+        }
+        Start-Process explorer.exe -ArgumentList "`"$reportsPath`""
+        $StatusText.Text="Opened reports folder: $reportsPath"
+    } catch {
+        [System.Windows.MessageBox]::Show($_.Exception.Message,'RBZ PC Health')|Out-Null
+    }
 })
 
 $window.ShowDialog()|Out-Null

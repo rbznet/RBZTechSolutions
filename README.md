@@ -1,54 +1,24 @@
-# RBZ PC Health v0.3.0
+# RBZ PC Health v0.3.1
 
-First service-ready RBZ PC Health release.
+UI/report workflow polish release.
 
-## v0.3.0
+## Changes from v0.3.0
 
-### Service workflow
-- Customer field
-- Job reference field
-- Full diagnostic scan
-- Attention / All Results views
-- Repair Centre
-- Customer report
-- Technician report
-- Service-action audit log
+- Removed the Yes/No/Cancel report-type prompt.
+- Added explicit **Customer Report** button.
+- Added explicit **Technician Report** button.
+- Added **Open Reports** button.
+- Fixes the visible literal `\r\n` text from the old report prompt by removing that prompt entirely.
+- Report generation logic and diagnostic/remediation behaviour are otherwise unchanged from v0.3.0.
+- Repair Centre remains limited to the same explicitly selected low-risk actions.
 
-### Guided Repair Centre
-v0.3.0 only exposes deliberately low-risk actions:
+## Report workflow
 
-- Microsoft Defender Quick Scan
-- DISM `/Online /Cleanup-Image /ScanHealth`
-- SFC `/verifyonly`
-- Temporary-file cleanup
+After running a scan:
 
-Every action:
-- must be explicitly ticked by the technician
-- requires a confirmation dialog
-- is logged
-- is included in generated reports
-- does not silently run during a scan
-
-### Intentionally NOT included
-- driver installation
-- Windows Update installation
-- registry cleaning
-- debloat scripts
-- service disabling
-- Secure Boot changes
-- BitLocker changes
-- software removal
-- BIOS/firmware changes
-
-### Customer vs Technician reports
-Customer reports hide Info findings and sensitive hardware detail where configured.
-Technician reports retain full diagnostic detail and category score deductions.
-
-### Branding
-Brand/product text, website, support email and report colours are configured in `Config/settings.json`.
-A future logo can be placed at:
-
-`Assets\rbz-logo.png`
+- **Customer Report** generates the simplified customer-facing report.
+- **Technician Report** generates the detailed technician report.
+- **Open Reports** opens the configured Reports directory.
 
 ## Bootstrap
 
@@ -63,15 +33,22 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\RBZHealth.ps1
 ```
 
+Test:
+1. Run Full Scan.
+2. Confirm Customer Report and Technician Report become enabled.
+3. Generate each report directly.
+4. Confirm Open Reports opens the report directory.
+5. Confirm Repair Centre behaviour is unchanged.
+
 ## Release
 
 ```powershell
 .\build-release.ps1
 
-gh release create v0.3.0 `
-  ".\dist\RBZ-PC-Health-0.3.0.zip" `
-  ".\dist\RBZ-PC-Health-0.3.0.sha256" `
+gh release create v0.3.1 `
+  ".\dist\RBZ-PC-Health-0.3.1.zip" `
+  ".\dist\RBZ-PC-Health-0.3.1.sha256" `
   --repo rbznet/RBZTechSolutions `
-  --title "RBZ PC Health v0.3.0" `
-  --notes "First service-ready release with guided low-risk remediation and customer/technician reporting."
+  --title "RBZ PC Health v0.3.1" `
+  --notes "Report workflow and UI polish."
 ```

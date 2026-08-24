@@ -1,0 +1,41 @@
+RBZ PC Health v0.3.1 update
+
+Replace:
+- Config\settings.json
+- RBZHealth.ps1
+- README.md
+
+Keep all v0.3.0 modules unchanged.
+
+Then:
+git status
+git diff
+
+git add .
+git commit -m "RBZ PC Health v0.3.1 report UI polish"
+git push
+
+Test locally:
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\RBZHealth.ps1
+
+Test:
+1. Run Full Scan.
+2. Customer Report button becomes enabled.
+3. Technician Report button becomes enabled.
+4. Both reports generate without a Yes/No dialog.
+5. Open Reports launches Explorer at the Reports folder.
+6. Repair Centre still works unchanged.
+
+If good:
+.\build-release.ps1
+
+gh release create v0.3.1 `
+  ".\dist\RBZ-PC-Health-0.3.1.zip" `
+  ".\dist\RBZ-PC-Health-0.3.1.sha256" `
+  --repo rbznet/RBZTechSolutions `
+  --title "RBZ PC Health v0.3.1" `
+  --notes "Report workflow and UI polish."
+
+Final bootstrap test:
+irm https://raw.githubusercontent.com/rbznet/RBZTechSolutions/main/bootstrap.ps1 | iex
