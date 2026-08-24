@@ -148,6 +148,20 @@ function Export-RBZReport {
         }
     }
 
+    $verificationSection=''
+    if($Config.remediation.includeRepairVerificationInReports -and $ServiceLog.Count){
+        $verified=@($ServiceLog | Where-Object {-not [string]::IsNullOrWhiteSpace([string]$_.VerificationStatus)})
+        if($verified.Count){
+            $verificationRows=foreach($v in $verified){
+                $statusClass=([string]$v.VerificationStatus).ToLowerInvariant()
+                $check=[System.Web.HttpUtility]::HtmlEncode([string]$v.VerificationCheck)
+                $summary=[System.Web.HttpUtility]::HtmlEncode([string]$v.VerificationSummary)
+                "<tr><td>$($v.VerificationCategory)</td><td>$check</td><td><span class='badge $statusClass'>$($v.VerificationStatus)</span></td><td>$summary</td><td>$($v.Name)</td></tr>"
+            }
+            $verificationSection="<h2>Repair Verification</h2><table><thead><tr><th>Category</th><th>Verification</th><th>Status</th><th>Result</th><th>Action</th></tr></thead><tbody>$($verificationRows -join "`n")</tbody></table>"
+        }
+    }
+
     $serviceSection=''
     if($ServiceLog.Count){
         $serviceRows=foreach($a in $ServiceLog){
@@ -225,6 +239,7 @@ footer{margin-top:34px;padding-top:16px;border-top:1px solid #e5e7eb;color:#6b72
 <div class='scorecard'><div class='score'>$score/100</div><div><div class='label'>$label</div><div class='counts'>Healthy $($counts.Healthy) | Recommend $($counts.Recommend) | Warning $($counts.Warning) | Critical $($counts.Critical)</div></div></div>
 <h2>Needs Attention</h2><div class='attentionBox'><table><thead><tr><th>Category</th><th>Check</th><th>Status</th><th>Finding</th><th>Recommendation</th></tr></thead><tbody>$attentionRows</tbody></table></div>
 $comparisonSection
+$verificationSection
 $serviceSection
 $scoreSection
 <h2>Diagnostic Results</h2>

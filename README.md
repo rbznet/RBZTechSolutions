@@ -1,74 +1,88 @@
-# RBZ PC Health v0.5.0
+# RBZ PC Health v0.5.1
 
-Controlled repair release.
+Repair progress and verification integration release.
 
-## Design
+## Live Repair Progress
 
-v0.5.0 expands the Repair Centre without changing the diagnostic, reporting, or before/after engine.
+Long-running Repair Centre actions now execute in a background PowerShell job so the WPF window remains responsive.
 
-All repair actions still:
-- require a completed scan before the Repair Centre is enabled
-- require explicit technician selection
-- are shown with a risk level
-- require confirmation before execution
-- are logged into the service history
-- can be verified by running another full scan
-- appear in reports through the existing service-action log
+The Repair Centre shows:
 
-## Low-risk actions
+- current action/stage
+- determinate progress percentage when DISM/SFC/CHKDSK expose one
+- an indeterminate activity bar when no reliable percentage is available
+- elapsed time
+- final action result
 
-- Create System Restore point
-- Update Microsoft Defender security intelligence
-- Microsoft Defender Quick Scan
-- DISM ScanHealth
-- SFC VerifyOnly
-- CHKDSK `/scan` on the Windows system drive
-- Windows Time resynchronisation
-- Temporary-file cleanup
+`Run Selected Actions` and `Run Full Scan` are disabled while a service action is actively running.
 
-## Medium-risk actions
+## DISM Verification
 
-- DISM RestoreHealth
-- SFC `/scannow`
+`DISM /RestoreHealth` now:
 
-When a Medium-risk action is selected, RBZ PC Health attempts to create a restore point first when configured.
+1. shows live activity/progress
+2. records the complete DISM result
+3. optionally runs `DISM /CheckHealth` after a successful repair
+4. parses the verification result into:
+   - Healthy
+   - Recommend
+   - Warning
+   - Info
 
-By default a restore-point failure is recorded but does **not** block the repair, because many valid Windows installations have System Protection disabled. Change:
+The parsed result is exposed as **Windows Component Store** in repair verification.
 
-```json
-"blockMediumActionIfRestorePointFails": false
-```
+## SFC Verification
 
-to `true` if you want a stricter service policy.
+SFC output is parsed for common Windows Resource Protection outcomes:
 
-## Windows Time safety
+- No integrity violations → Healthy
+- Corrupt files repaired successfully → Healthy
+- Corruption not fully repaired → Warning
+- Requested operation could not be performed → Warning
+- Unrecognised successful output → Info
 
-The time action does not rewrite NTP/domain configuration.
+The result is exposed as **Protected System Files**.
 
-It:
-1. checks that W32Time is not Disabled
-2. starts W32Time if necessary
-3. requests `/resync /rediscover`
-4. records source and status
+## Before / After Integration
 
-If W32Time is Disabled, the action stops and reports the condition instead of altering the service configuration.
+Repair verification rows now appear directly in the **Before / After** tab with:
 
-## Not included
+`Change = Verified`
 
-v0.5.0 still does not automatically:
-- reset Winsock/TCP-IP
-- delete Windows Update databases
-- install Windows Updates
-- install/remove drivers
-- change Secure Boot
-- enable/disable BitLocker
-- remove applications
-- clean the registry
-- debloat Windows
-- modify BIOS/firmware
-- change Disabled Windows services
+Examples:
 
-Those need stronger rollback/testing before being exposed in a customer-service tool.
+- Windows Component Store | Service action → Healthy
+- Protected System Files | Service action → Healthy
+- Windows Time synchronisation | Service action → Healthy
+- Defender security intelligence | Service action → Healthy
+
+These verification rows complement the normal baseline/current diagnostic comparison. They do not alter the health score by themselves.
+
+A normal **Run Full Scan** after repair is still recommended because it validates the broader machine state.
+
+## Reports
+
+Customer and Technician reports now include a dedicated **Repair Verification** section when service actions returned verification results.
+
+The existing:
+- Before / After section
+- Service Actions Performed
+- diagnostic findings
+- technician scoring explanation
+
+remain unchanged.
+
+## Install
+
+Replace/add:
+
+- `Config\settings.json`
+- `Modules\Service.psm1`
+- `Modules\Report.psm1`
+- `RBZHealth.ps1`
+- `README.md`
+
+Keep all other v0.5.0/v0.4.0 modules unchanged.
 
 ## Local test
 
@@ -77,29 +91,30 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\RBZHealth.ps1
 ```
 
-Suggested first test:
+Recommended test:
+
 1. Run Full Scan.
-2. Set/confirm the baseline.
-3. Test **Create system restore point**.
-4. Test **CHKDSK /scan**.
-5. Test **Defender security intelligence update**.
-6. Test **Windows Time resynchronisation**.
-7. Test DISM RestoreHealth and SFC /scannow separately.
-8. Run Full Scan again.
-9. Review Before / After.
-10. Generate Customer and Technician reports.
+2. Run DISM RestoreHealth by itself.
+3. Confirm the Repair Centre remains responsive.
+4. Confirm elapsed time increases.
+5. Confirm the bar becomes determinate if DISM percentage output is detected.
+6. Confirm Windows Component Store appears as Verified in Before / After.
+7. Run SFC `/scannow`.
+8. Confirm Protected System Files appears as Verified.
+9. Run Full Scan again.
+10. Generate Customer and Technician reports and confirm Repair Verification appears.
 
 ## Release
 
 ```powershell
 .\build-release.ps1
 
-gh release create v0.5.0 `
-  ".\dist\RBZ-PC-Health-0.5.0.zip" `
-  ".\dist\RBZ-PC-Health-0.5.0.sha256" `
+gh release create v0.5.1 `
+  ".\dist\RBZ-PC-Health-0.5.1.zip" `
+  ".\dist\RBZ-PC-Health-0.5.1.sha256" `
   --repo rbznet/RBZTechSolutions `
-  --title "RBZ PC Health v0.5.0" `
-  --notes "Add controlled repair actions with restore-point protection."
+  --title "RBZ PC Health v0.5.1" `
+  --notes "Add live repair progress and DISM/SFC verification integration."
 ```
 
 Bootstrap:

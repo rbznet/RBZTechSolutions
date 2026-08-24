@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "RBZ PC Health",
-    "version": "0.5.0",
+    "version": "0.5.1",
     "company": "RBZ Tech Solutions Ltd",
     "productSubtitle": "Technician Diagnostic & Service Suite",
     "reportPrefix": "RBZ-PC-Health",
@@ -97,7 +97,12 @@
     "attemptRestorePointBeforeMediumActions": true,
     "blockMediumActionIfRestorePointFails": false,
     "restorePointDescription": "RBZ PC Health pre-repair",
-    "maxActionLogEntries": 100
+    "maxActionLogEntries": 100,
+    "progressPollMilliseconds": 400,
+    "showElapsedTime": true,
+    "verifyDismAfterRestoreHealth": true,
+    "includeRepairVerificationInComparison": true,
+    "includeRepairVerificationInReports": true
   },
   "scoring": {
     "categoryWeights": {

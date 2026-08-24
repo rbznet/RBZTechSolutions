@@ -115,7 +115,7 @@ Add-Type -AssemblyName PresentationFramework
 <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,10,0,0"><Button Name="SetBaselineButton" Content="Set Current as Baseline" Width="165" Height="32" IsEnabled="False"/><Button Name="ClearHistoryButton" Content="Clear Session History" Width="145" Height="32" Margin="8,0,0,0"/></StackPanel>
 </Grid></TabItem>
 
-<TabItem Header="Repair Centre"><Grid Margin="10"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="160"/></Grid.RowDefinitions>
+<TabItem Header="Repair Centre"><Grid Margin="10"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="160"/></Grid.RowDefinitions>
 <TextBlock Text="Low-risk technician-approved actions only. Run a new scan after service actions to create an after-service comparison." Foreground="#6B7280" Margin="0,0,0,10"/>
 <DataGrid Grid.Row="1" Name="ActionGrid" AutoGenerateColumns="False" CanUserAddRows="False"><DataGrid.Columns>
 <DataGridCheckBoxColumn Header="Run" Binding="{Binding Selected}" Width="55"/>
@@ -124,8 +124,13 @@ Add-Type -AssemblyName PresentationFramework
 <DataGridTextColumn Header="Risk" Binding="{Binding Risk}" IsReadOnly="True" Width="70"/>
 <DataGridTextColumn Header="Description" Binding="{Binding Description}" IsReadOnly="True" Width="*"/>
 </DataGrid.Columns></DataGrid>
-<StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,10"><Button Name="RunActionsButton" Content="Run Selected Actions" Width="160" Height="34" IsEnabled="False"/><TextBlock Name="ActionStatusText" Margin="14,8,0,0" Foreground="#6B7280"/></StackPanel>
-<TextBox Grid.Row="3" Name="ActionLogBox" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="12"/>
+<StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,8"><Button Name="RunActionsButton" Content="Run Selected Actions" Width="160" Height="34" IsEnabled="False"/><TextBlock Name="ActionStatusText" Margin="14,8,0,0" Foreground="#6B7280"/></StackPanel>
+<Grid Grid.Row="3" Margin="0,0,0,8">
+<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+<ProgressBar Name="ActionProgressBar" Height="16" Minimum="0" Maximum="100" IsIndeterminate="False"/>
+<Grid Grid.Row="1" Margin="0,5,0,0"><TextBlock Name="ActionProgressText" Text="Ready." Foreground="#6B7280"/><TextBlock Name="ActionElapsedText" Text="" HorizontalAlignment="Right" Foreground="#6B7280"/></Grid>
+</Grid>
+<TextBox Grid.Row="4" Name="ActionLogBox" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="12"/>
 </Grid></TabItem>
 </TabControl></Border>
 
@@ -135,13 +140,13 @@ Add-Type -AssemblyName PresentationFramework
 
 $reader=New-Object System.Xml.XmlNodeReader $xaml
 $window=[Windows.Markup.XamlReader]::Load($reader)
-foreach($name in @('CustomerBox','JobBox','ScanButton','CustomerReportButton','TechnicianReportButton','OpenReportsButton','ResultsGrid','AttentionGrid','ScoreText','ScoreLabel','StatusText','Progress','DeviceText','VersionText','HealthyCount','InfoCount','RecommendCount','WarningCount','CriticalCount','TotalCount','DetailTitle','DetailStatus','DetailSummary','DetailBody','DetailRecommendation','CopyDetailsButton','ActionGrid','RunActionsButton','ActionStatusText','ActionLogBox','BaselineScoreText','CurrentScoreText','ScoreChangeText','ScanCountText','ComparisonSummaryText','ComparisonGrid','SetBaselineButton','ClearHistoryButton')){Set-Variable -Name $name -Value $window.FindName($name)}
+foreach($name in @('CustomerBox','JobBox','ScanButton','CustomerReportButton','TechnicianReportButton','OpenReportsButton','ResultsGrid','AttentionGrid','ScoreText','ScoreLabel','StatusText','Progress','DeviceText','VersionText','HealthyCount','InfoCount','RecommendCount','WarningCount','CriticalCount','TotalCount','DetailTitle','DetailStatus','DetailSummary','DetailBody','DetailRecommendation','CopyDetailsButton','ActionGrid','RunActionsButton','ActionStatusText','ActionLogBox','ActionProgressBar','ActionProgressText','ActionElapsedText','BaselineScoreText','CurrentScoreText','ScoreChangeText','ScanCountText','ComparisonSummaryText','ComparisonGrid','SetBaselineButton','ClearHistoryButton')){Set-Variable -Name $name -Value $window.FindName($name)}
 
 if($Customer){$CustomerBox.Text=$Customer}
 $VersionText.Text="$($Config.app.productSubtitle) | v$($Config.app.version)"
 $DeviceText.Text="$env:COMPUTERNAME | $env:USERNAME"
 $script:Findings=$null
-$script:ServiceLog=[System.Collections.Generic.List[object]]::new()
+$script:ServiceLog=[System.Collections.Generic.List[object]]::new()`n$script:ServiceVerificationRows=[System.Collections.Generic.List[object]]::new()
 $script:Actions=@(Get-RBZServiceActions -Config $Config)
 $ActionGrid.ItemsSource=$script:Actions
 $script:ScanHistory=[System.Collections.Generic.List[object]]::new()
@@ -165,8 +170,11 @@ function Update-RBZComparisonView {
         $cmp=Get-RBZComparisonSummary -Baseline $script:BaselineSnapshot -Current $script:CurrentSnapshot
         $delta=[int]$cmp.ScoreChange
         $ScoreChangeText.Text=$(if($delta -gt 0){"+$delta"}else{"$delta"})
-        $ComparisonGrid.ItemsSource=@($cmp.Changes)
-        $ComparisonSummaryText.Text="Improved: $($cmp.Improved) | Worsened: $($cmp.Worsened) | New: $($cmp.New) | Removed: $($cmp.Removed) | Updated: $($cmp.Updated)"
+        $displayChanges=[System.Collections.Generic.List[object]]::new()
+        foreach($c in @($cmp.Changes)){$displayChanges.Add($c)}
+        foreach($v in @($script:ServiceVerificationRows)){$displayChanges.Add($v)}
+        $ComparisonGrid.ItemsSource=@($displayChanges)
+        $ComparisonSummaryText.Text="Improved: $($cmp.Improved) | Worsened: $($cmp.Worsened) | New: $($cmp.New) | Removed: $($cmp.Removed) | Updated: $($cmp.Updated) | Repair verified: $($script:ServiceVerificationRows.Count)"
     }else{
         $ScoreChangeText.Text='-';$ComparisonGrid.ItemsSource=$null
         $ComparisonSummaryText.Text='The first scan in this session becomes the baseline. Run another scan after service work to compare results.'
@@ -203,24 +211,111 @@ $ScanButton.Add_Click({
 $RunActionsButton.Add_Click({
     $selected=@($script:Actions|Where-Object Selected -eq $true)
     if(-not $selected.Count){[System.Windows.MessageBox]::Show('Select at least one service action first.','RBZ PC Health')|Out-Null;return}
+
     $names=($selected.Name -join "`n- ")
     $confirm=[System.Windows.MessageBox]::Show("Run these selected actions?`n`n- $names`n`nOnly explicitly selected actions will run.",'RBZ PC Health - Confirm',[System.Windows.MessageBoxButton]::YesNo,[System.Windows.MessageBoxImage]::Question)
     if($confirm -ne [System.Windows.MessageBoxResult]::Yes){return}
+
     try{
-        $RunActionsButton.IsEnabled=$false;$window.Cursor='Wait'
+        $RunActionsButton.IsEnabled=$false
+        $ScanButton.IsEnabled=$false
+        $window.Cursor='Wait'
+        $serviceModule=Join-Path $modulePath 'Service.psm1'
+        $configJson=$Config | ConvertTo-Json -Depth 20 -Compress
+
         foreach($a in $selected){
-            $ActionStatusText.Text="Running: $($a.Name)..."
-            $window.Dispatcher.Invoke([action]{},'Background')
-            $r=Invoke-RBZServiceAction -Id $a.Id -Config $Config
+            $actionStarted=Get-Date
+            $progressPath=Join-Path $env:TEMP ("RBZ-PC-Health-progress-" + [guid]::NewGuid().ToString('N') + '.json')
+            Remove-Item -LiteralPath $progressPath -Force -ErrorAction SilentlyContinue
+
+            $ActionStatusText.Text="Running: $($a.Name)"
+            $ActionProgressBar.Value=0
+            $ActionProgressBar.IsIndeterminate=$true
+            $ActionProgressText.Text='Starting...'
+            $ActionElapsedText.Text='00:00:00'
+
+            $job=Start-Job -ScriptBlock {
+                param($ModulePath,$ConfigJson,$ActionId,$ProgressPath)
+                Import-Module $ModulePath -Force
+                $cfg=$ConfigJson | ConvertFrom-Json
+                Invoke-RBZServiceAction -Id $ActionId -Config $cfg -ProgressPath $ProgressPath
+            } -ArgumentList $serviceModule,$configJson,$a.Id,$progressPath
+
+            while($job.State -in @('NotStarted','Running')){
+                try {
+                    if(Test-Path $progressPath){
+                        $state=Get-Content -LiteralPath $progressPath -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json
+                        if($state){
+                            $ActionProgressBar.IsIndeterminate=[bool]$state.Indeterminate
+                            if(-not $state.Indeterminate -and $null -ne $state.Percent){$ActionProgressBar.Value=[double]$state.Percent}
+                            $ActionProgressText.Text=$(if([string]::IsNullOrWhiteSpace([string]$state.Message)){$state.Stage}else{"$($state.Stage) - $($state.Message)"})
+                        }
+                    }
+                } catch {}
+
+                $elapsed=(Get-Date)-$actionStarted
+                $ActionElapsedText.Text=$elapsed.ToString('hh\:mm\:ss')
+                $StatusText.Text="Service action running: $($a.Name) | Elapsed $($elapsed.ToString('hh\:mm\:ss'))"
+
+                $window.Dispatcher.Invoke([action]{},[System.Windows.Threading.DispatcherPriority]::Background)
+                Start-Sleep -Milliseconds ([int]$Config.remediation.progressPollMilliseconds)
+            }
+
+            $jobOutput=@(Receive-Job -Job $job -Wait -AutoRemoveJob)
+            $r=$jobOutput | Where-Object {$_ -and $_.PSObject.Properties['Id']} | Select-Object -Last 1
+            if(-not $r){
+                $r=[pscustomobject]@{
+                    Id=$a.Id;Name=$a.Name;Risk=$a.Risk;Started=$actionStarted.ToString('o');Finished=(Get-Date).ToString('o')
+                    Success=$false;Summary='Service action did not return a result object.';Details=($jobOutput|Out-String)
+                    VerificationCategory=$a.Category;VerificationCheck=$a.Name;VerificationStatus='Warning'
+                    VerificationSummary='Service action result could not be verified.';VerificationDetails=($jobOutput|Out-String)
+                }
+            }
+
             $script:ServiceLog.Add($r)
-            $ActionLogBox.AppendText("[$((Get-Date).ToString('HH:mm:ss'))] $($a.Name)`r`n$($r.Summary)`r`n`r`n")
+
+            if(-not [string]::IsNullOrWhiteSpace([string]$r.VerificationStatus)){
+                $script:ServiceVerificationRows.Remove(
+                    ($script:ServiceVerificationRows | Where-Object Check -eq $r.VerificationCheck | Select-Object -First 1)
+                ) | Out-Null
+
+                $script:ServiceVerificationRows.Add([pscustomobject]@{
+                    Change='Verified'
+                    Category=$r.VerificationCategory
+                    Check=$r.VerificationCheck
+                    BeforeStatus='Service action'
+                    AfterStatus=$r.VerificationStatus
+                    BeforeSummary=$a.Name
+                    AfterSummary=$r.VerificationSummary
+                })
+            }
+
+            $ActionProgressBar.IsIndeterminate=$false
+            $ActionProgressBar.Value=100
+            $ActionProgressText.Text=$r.Summary
+            $ActionElapsedText.Text=((Get-Date)-$actionStarted).ToString('hh\:mm\:ss')
+
+            $verifyText=$(if(-not [string]::IsNullOrWhiteSpace([string]$r.VerificationSummary)){"`r`nVerification: $($r.VerificationStatus) - $($r.VerificationSummary)"}else{''})
+            $ActionLogBox.AppendText("[$((Get-Date).ToString('HH:mm:ss'))] $($a.Name)`r`n$($r.Summary)$verifyText`r`n`r`n")
             $ActionLogBox.ScrollToEnd()
             $a.Selected=$false
+            Remove-Item -LiteralPath $progressPath -Force -ErrorAction SilentlyContinue
+            Update-RBZComparisonView
         }
+
         $ActionGrid.Items.Refresh()
-        $ActionStatusText.Text='Selected actions completed. Run a new scan to verify results.'
-        $StatusText.Text='Service actions completed. Re-scan recommended.'
-    }finally{$window.Cursor=$null;$RunActionsButton.IsEnabled=$true}
+        $ActionStatusText.Text='Selected actions completed. Run a new scan to verify diagnostic findings.'
+        $StatusText.Text='Service actions completed. Repair verification is shown in Before / After; full re-scan still recommended.'
+    }
+    catch{
+        [System.Windows.MessageBox]::Show($_.Exception.Message,'RBZ PC Health - Repair Centre')|Out-Null
+        $StatusText.Text='A service action failed.'
+    }
+    finally{
+        $window.Cursor=$null
+        $RunActionsButton.IsEnabled=$true
+        $ScanButton.IsEnabled=$true
+    }
 })
 
 function New-RBZSelectedReport {
