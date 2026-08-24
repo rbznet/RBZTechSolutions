@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "RBZ PC Health",
-    "version": "0.4.0",
+    "version": "0.5.0",
     "company": "RBZ Tech Solutions Ltd",
     "productSubtitle": "Technician Diagnostic & Service Suite",
     "reportPrefix": "RBZ-PC-Health",
@@ -77,12 +77,26 @@
     "showInfoFindings": true,
     "defaultAudience": "Customer"
   },
+  "session": {
+    "autoSetFirstScanAsBaseline": true,
+    "maxInMemoryScans": 10,
+    "includeComparisonInReports": true
+  },
   "remediation": {
     "enabled": true,
     "allowTempCleanup": true,
     "allowDefenderQuickScan": true,
+    "allowDefenderSignatureUpdate": true,
     "allowDismScanHealth": true,
+    "allowDismRestoreHealth": true,
     "allowSfcVerifyOnly": true,
+    "allowSfcScannow": true,
+    "allowCheckDiskScan": true,
+    "allowWindowsTimeResync": true,
+    "allowRestorePoint": true,
+    "attemptRestorePointBeforeMediumActions": true,
+    "blockMediumActionIfRestorePointFails": false,
+    "restorePointDescription": "RBZ PC Health pre-repair",
     "maxActionLogEntries": 100
   },
   "scoring": {
@@ -103,10 +117,5 @@
       "Warning": 0.7,
       "Critical": 0.25
     }
-  },
-  "session": {
-    "autoSetFirstScanAsBaseline": true,
-    "maxInMemoryScans": 10,
-    "includeComparisonInReports": true
   }
 }

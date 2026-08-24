@@ -1,0 +1,46 @@
+RBZ PC Health v0.5.0 update
+
+Replace:
+- Config\settings.json
+- Modules\Service.psm1
+- README.md
+
+Keep the tested v0.4.0 RBZHealth.ps1, Session.psm1, Report.psm1 and all diagnostic modules unchanged.
+
+Then:
+
+git status
+git diff
+
+git add .
+git commit -m "RBZ PC Health v0.5.0 controlled repairs"
+git push
+
+LOCAL TEST:
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\RBZHealth.ps1
+
+Recommended test order:
+1. Run Full Scan.
+2. Create system restore point.
+3. CHKDSK /scan.
+4. Defender intelligence update.
+5. Windows Time resync.
+6. DISM RestoreHealth.
+7. SFC /scannow.
+8. Run Full Scan again.
+9. Check Before / After and reports.
+
+If good:
+
+.\build-release.ps1
+
+gh release create v0.5.0 `
+  ".\dist\RBZ-PC-Health-0.5.0.zip" `
+  ".\dist\RBZ-PC-Health-0.5.0.sha256" `
+  --repo rbznet/RBZTechSolutions `
+  --title "RBZ PC Health v0.5.0" `
+  --notes "Add controlled repair actions with restore-point protection."
+
+Final:
+irm https://raw.githubusercontent.com/rbznet/RBZTechSolutions/main/bootstrap.ps1 | iex
