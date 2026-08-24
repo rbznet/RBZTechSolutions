@@ -4,6 +4,47 @@ param([string]$ConfigPath,[string]$Customer,[switch]$NoGui)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+
+# RBZ PC Health relies on Windows-native management modules that are safest
+# under Windows PowerShell 5.1. If launched from PowerShell 7/Core, relaunch
+# this same script under Windows PowerShell before importing any modules.
+if($PSVersionTable.PSEdition -eq 'Core'){
+    $windowsPowerShell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+
+    if(-not(Test-Path $windowsPowerShell)){
+        throw "Windows PowerShell 5.1 was not found at '$windowsPowerShell'."
+    }
+
+    $argList = [System.Collections.Generic.List[string]]::new()
+    $argList.Add('-NoLogo')
+    $argList.Add('-NoProfile')
+    $argList.Add('-ExecutionPolicy')
+    $argList.Add('Bypass')
+    $argList.Add('-File')
+    $argList.Add($MyInvocation.MyCommand.Path)
+
+    if(-not [string]::IsNullOrWhiteSpace($ConfigPath)){
+        $argList.Add('-ConfigPath')
+        $argList.Add($ConfigPath)
+    }
+
+    if(-not [string]::IsNullOrWhiteSpace($Customer)){
+        $argList.Add('-Customer')
+        $argList.Add($Customer)
+    }
+
+    if($NoGui){
+        $argList.Add('-NoGui')
+    }
+
+    $proc = Start-Process -FilePath $windowsPowerShell -ArgumentList $argList -PassThru
+    if($NoGui){
+        $proc.WaitForExit()
+        exit $proc.ExitCode
+    }
+
+    exit 0
+}
 $Root=Split-Path -Parent $MyInvocation.MyCommand.Path
 if(-not $ConfigPath){$ConfigPath=Join-Path $Root 'Config\settings.json'}
 Import-Module (Join-Path $Root 'Modules\Common.psm1') -Force

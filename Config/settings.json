@@ -6,7 +6,9 @@
     "productSubtitle": "Technician Diagnostic & Service Suite",
     "reportPrefix": "RBZ-PC-Health",
     "requireAdmin": true,
-    "minimumPowerShellMajor": 5
+    "minimumPowerShellMajor": 5,
+    "requiredPSEdition": "Desktop",
+    "requiredPowerShellMajor": 5
   },
   "branding": {
     "accent": "#111827",
@@ -107,7 +109,7 @@
     "promptWhenSystemProtectionDisabled": true,
     "verifyRestorePointAfterCreate": true,
     "allowEnableSystemProtection": true,
-    "restorePointUseCleanPowerShell": true
+    "restorePointUseCleanPowerShell": false
   },
   "scoring": {
     "categoryWeights": {

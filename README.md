@@ -203,3 +203,28 @@ Success is still determined only by verification:
 4. Confirm that a new matching RBZ restore point exists.
 
 The customer-facing dialog now shows a concise failure summary; detailed child-process output remains available for technician troubleshooting.
+
+
+## RC7 runtime correction
+
+RBZ PC Health now standardises on **Windows PowerShell 5.1** for the application runtime.
+
+If `RBZHealth.ps1` is launched from PowerShell 7 / `pwsh`, it immediately relaunches itself using:
+
+```text
+C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+```
+
+before importing RBZ modules or Windows-native management modules.
+
+This avoids PowerShell 7 Windows-Compatibility proxy modules such as `remoteIpMoProxy_*`, which caused Defender/System Restore cmdlets to become unreliable after the temporary compatibility module was removed.
+
+Restore-point creation is therefore simplified back to the native same-process workflow:
+
+1. Capture existing restore-point sequence numbers.
+2. Run `Checkpoint-Computer`.
+3. Read restore points again using `Get-ComputerRestorePoint`.
+4. Verify a new matching RBZ restore point exists.
+5. Continue with DISM/SFC only after successful verification, unless the technician explicitly chooses to continue without one.
+
+PowerShell 7 remains suitable for launching the script; RBZ handles the runtime hand-off automatically.

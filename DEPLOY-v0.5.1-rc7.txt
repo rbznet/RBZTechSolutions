@@ -1,0 +1,53 @@
+RBZ PC Health v0.5.1 RC7
+
+Replace:
+- Config\settings.json
+- Modules\Service.psm1
+- Modules\Report.psm1
+- RBZHealth.ps1
+- README.md
+
+Git:
+git status
+git diff
+
+git add .
+git commit -m "RBZ PC Health v0.5.1 enforce Windows PowerShell 5.1 runtime"
+git push origin main
+
+TEST 1 - launch from PowerShell 7:
+pwsh
+.\RBZHealth.ps1
+
+RBZ should relaunch itself under Windows PowerShell 5.1 automatically.
+
+TEST 2 - confirm runtime from inside a temporary diagnostic if needed:
+$PSVersionTable.PSEdition
+$PSVersionTable.PSVersion
+
+Expected:
+Desktop
+5.1.x
+
+TEST 3 - Medium repair:
+1. Run Full Scan.
+2. Select DISM RestoreHealth.
+3. Restore point should be created and verified.
+4. DISM should start.
+5. Confirm live progress and Repair Verification.
+6. Repeat with SFC /scannow.
+
+Verify restore point:
+Get-ComputerRestorePoint |
+  Sort-Object SequenceNumber -Descending |
+  Select-Object -First 5 SequenceNumber,Description,CreationTime
+
+If good:
+.\build-release.ps1
+
+gh release create v0.5.1 `
+  ".\dist\RBZ-PC-Health-0.5.1.zip" `
+  ".\dist\RBZ-PC-Health-0.5.1.sha256" `
+  --repo rbznet/RBZTechSolutions `
+  --title "RBZ PC Health v0.5.1" `
+  --notes "Add live repair progress, verification, and Windows PowerShell 5.1 runtime hardening."
