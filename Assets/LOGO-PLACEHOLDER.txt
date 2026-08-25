@@ -1,0 +1,12 @@
+RBZ PC Health logo placeholder
+
+Place the final logo at:
+Assets\rbz-logo.png
+
+The application loads it automatically at startup.
+If the PNG is absent, the header displays the built-in RBZ text tile.
+
+Recommended:
+- transparent PNG
+- square or near-square
+- at least 256x256 pixels

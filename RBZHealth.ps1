@@ -122,29 +122,158 @@ if($NoGui){
 
 Add-Type -AssemblyName PresentationFramework
 [xml]$xaml=@'
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Title="RBZ PC Health" Height="820" Width="1260" MinHeight="700" MinWidth="1050" WindowStartupLocation="CenterScreen" Background="#F3F4F6">
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="RBZ PC Health" Height="940" Width="1500" MinHeight="800" MinWidth="1180" WindowStartupLocation="CenterScreen" Background="#F3F4F6">
 <Window.Resources>
-<Style TargetType="DataGridRow"><Style.Triggers>
-<DataTrigger Binding="{Binding Status}" Value="Critical"><Setter Property="Background" Value="#FEE2E2"/></DataTrigger>
-<DataTrigger Binding="{Binding Status}" Value="Warning"><Setter Property="Background" Value="#FFEDD5"/></DataTrigger>
-<DataTrigger Binding="{Binding Status}" Value="Recommend"><Setter Property="Background" Value="#FEF3C7"/></DataTrigger>
-<DataTrigger Binding="{Binding Status}" Value="Healthy"><Setter Property="Background" Value="#ECFDF5"/></DataTrigger>
-<DataTrigger Binding="{Binding Status}" Value="Info"><Setter Property="Background" Value="#EFF6FF"/></DataTrigger>
+<SolidColorBrush x:Key="RBZ.Panel" Color="#FFFFFF"/>
+<SolidColorBrush x:Key="RBZ.PanelAlt" Color="#F9FAFB"/>
+<SolidColorBrush x:Key="RBZ.Control" Color="#FFFFFF"/>
+<SolidColorBrush x:Key="RBZ.Text" Color="#111827"/>
+<SolidColorBrush x:Key="RBZ.Border" Color="#D1D5DB"/>
+<SolidColorBrush x:Key="RBZ.Header" Color="#F3F4F6"/>
+<SolidColorBrush x:Key="RBZ.HeaderText" Color="#111827"/>
+<SolidColorBrush x:Key="RBZ.Selection" Color="#DBEAFE"/>
+<SolidColorBrush x:Key="RBZ.SelectionText" Color="#111827"/>
+
+<Style TargetType="Button">
+<Setter Property="Background" Value="{DynamicResource RBZ.Control}"/>
+<Setter Property="Foreground" Value="{DynamicResource RBZ.Text}"/>
+<Setter Property="BorderBrush" Value="{DynamicResource RBZ.Border}"/>
+<Setter Property="BorderThickness" Value="1"/>
+<Setter Property="Padding" Value="10,4"/>
+<Setter Property="Template">
+<Setter.Value>
+<ControlTemplate TargetType="Button">
+<Border Name="ButtonBorder"
+        Background="{TemplateBinding Background}"
+        BorderBrush="{TemplateBinding BorderBrush}"
+        BorderThickness="{TemplateBinding BorderThickness}">
+<ContentPresenter HorizontalAlignment="Center"
+                  VerticalAlignment="Center"
+                  Margin="{TemplateBinding Padding}"/>
+</Border>
+<ControlTemplate.Triggers>
+<Trigger Property="IsMouseOver" Value="True">
+<Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource RBZ.ControlHover}"/>
+</Trigger>
+<Trigger Property="IsPressed" Value="True">
+<Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource RBZ.Selection}"/>
+<Setter Property="Foreground" Value="{DynamicResource RBZ.SelectionText}"/>
+</Trigger>
+<Trigger Property="IsEnabled" Value="False">
+<Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource RBZ.PanelAlt}"/>
+<Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{DynamicResource RBZ.Border}"/>
+<Setter Property="Foreground" Value="{DynamicResource RBZ.TextMuted}"/>
+<Setter Property="Opacity" Value="0.72"/>
+</Trigger>
+</ControlTemplate.Triggers>
+</ControlTemplate>
+</Setter.Value>
+</Setter>
+</Style>
+<Style TargetType="TextBox">
+<Setter Property="Background" Value="{DynamicResource RBZ.Control}"/>
+<Setter Property="Foreground" Value="{DynamicResource RBZ.Text}"/>
+<Setter Property="BorderBrush" Value="{DynamicResource RBZ.Border}"/>
+<Setter Property="CaretBrush" Value="{DynamicResource RBZ.Text}"/>
+</Style>
+<Style TargetType="CheckBox"><Setter Property="Foreground" Value="{DynamicResource RBZ.Text}"/></Style>
+<Style TargetType="TabItem">
+<Setter Property="Foreground" Value="{DynamicResource RBZ.Text}"/>
+<Setter Property="Background" Value="{DynamicResource RBZ.Header}"/>
+<Setter Property="BorderBrush" Value="{DynamicResource RBZ.Border}"/>
+<Setter Property="Padding" Value="8,4"/>
+<Setter Property="Template">
+<Setter.Value>
+<ControlTemplate TargetType="TabItem">
+<Border Name="TabBorder"
+        Background="{TemplateBinding Background}"
+        BorderBrush="{TemplateBinding BorderBrush}"
+        BorderThickness="1,1,1,0"
+        Padding="{TemplateBinding Padding}">
+<ContentPresenter ContentSource="Header"
+                  HorizontalAlignment="Center"
+                  VerticalAlignment="Center"/>
+</Border>
+<ControlTemplate.Triggers>
+<Trigger Property="IsSelected" Value="True">
+<Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource RBZ.Panel}"/>
+<Setter Property="Foreground" Value="{DynamicResource RBZ.Text}"/>
+</Trigger>
+<Trigger Property="IsMouseOver" Value="True">
+<Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource RBZ.ControlHover}"/>
+</Trigger>
+</ControlTemplate.Triggers>
+</ControlTemplate>
+</Setter.Value>
+</Setter>
+</Style>
+<Style TargetType="DataGrid">
+<Setter Property="Background" Value="{DynamicResource RBZ.Panel}"/>
+<Setter Property="Foreground" Value="{DynamicResource RBZ.Text}"/>
+<Setter Property="BorderBrush" Value="{DynamicResource RBZ.Border}"/>
+<Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource RBZ.Border}"/>
+<Setter Property="VerticalGridLinesBrush" Value="{DynamicResource RBZ.Border}"/>
+<Setter Property="RowBackground" Value="{DynamicResource RBZ.Panel}"/>
+<Setter Property="AlternatingRowBackground" Value="{DynamicResource RBZ.PanelAlt}"/>
+</Style>
+<Style TargetType="DataGridColumnHeader">
+<Setter Property="Background" Value="{DynamicResource RBZ.Header}"/>
+<Setter Property="Foreground" Value="{DynamicResource RBZ.HeaderText}"/>
+<Setter Property="BorderBrush" Value="{DynamicResource RBZ.Border}"/>
+<Setter Property="Padding" Value="6,4"/>
+</Style>
+<Style TargetType="DataGridCell">
+<Setter Property="BorderBrush" Value="{DynamicResource RBZ.Border}"/>
+<Style.Triggers>
+<Trigger Property="IsSelected" Value="True">
+<Setter Property="Background" Value="{DynamicResource RBZ.Selection}"/>
+<Setter Property="Foreground" Value="{DynamicResource RBZ.SelectionText}"/>
+</Trigger>
+</Style.Triggers>
+</Style>
+<Style TargetType="DataGridRow"><Setter Property="Foreground" Value="{DynamicResource RBZ.Text}"/><Style.Triggers>
+<DataTrigger Binding="{Binding Status}" Value="Critical"><Setter Property="Background" Value="#FEE2E2"/><Setter Property="Foreground" Value="#111827"/></DataTrigger>
+<DataTrigger Binding="{Binding Status}" Value="Warning"><Setter Property="Background" Value="#FFEDD5"/><Setter Property="Foreground" Value="#111827"/></DataTrigger>
+<DataTrigger Binding="{Binding Status}" Value="Recommend"><Setter Property="Background" Value="#FEF3C7"/><Setter Property="Foreground" Value="#111827"/></DataTrigger>
+<DataTrigger Binding="{Binding Status}" Value="Healthy"><Setter Property="Background" Value="#ECFDF5"/><Setter Property="Foreground" Value="#111827"/></DataTrigger>
+<DataTrigger Binding="{Binding Status}" Value="Info"><Setter Property="Background" Value="#EFF6FF"/><Setter Property="Foreground" Value="#111827"/></DataTrigger>
 </Style.Triggers></Style>
 </Window.Resources>
 <Grid>
 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
 
-<Border Grid.Row="0" Background="#111827" Padding="22,16"><Grid>
-<StackPanel><TextBlock Text="RBZ PC Health" Foreground="White" FontSize="28" FontWeight="Bold"/><TextBlock Name="VersionText" Foreground="#CBD5E1" FontSize="13" Margin="0,4,0,0"/></StackPanel>
-<TextBlock Name="DeviceText" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="#E5E7EB" FontSize="14"/>
+<Border Grid.Row="0" Name="HeaderBorder" Background="#111827" Padding="22,16"><Grid>
+<Grid.ColumnDefinitions>
+<ColumnDefinition Width="Auto"/>
+<ColumnDefinition Width="*"/>
+<ColumnDefinition Width="Auto"/>
+</Grid.ColumnDefinitions>
+
+<Border Name="LogoPlaceholder" Grid.Column="0" Width="58" Height="58" CornerRadius="8"
+        BorderThickness="1" BorderBrush="#64748B" Background="#0F172A" Margin="0,0,14,0">
+<Grid>
+<Image Name="BrandLogo" Stretch="Uniform" Margin="6" Visibility="Collapsed"/>
+<TextBlock Name="LogoFallbackText" Text="RBZ" Foreground="White" FontWeight="Bold"
+           FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+</Grid>
+</Border>
+
+<StackPanel Grid.Column="1" VerticalAlignment="Center">
+<TextBlock Text="RBZ PC Health" Foreground="White" FontSize="28" FontWeight="Bold"/>
+<TextBlock Name="VersionText" Foreground="#CBD5E1" FontSize="13" Margin="0,4,0,0"/>
+</StackPanel>
+
+<StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+<Button Name="ThemeButton" Content="Dark mode" Height="32" Padding="12,4" Margin="0,0,14,0"/>
+<TextBlock Name="DeviceText" VerticalAlignment="Center" Foreground="#E5E7EB" FontSize="14"/>
+</StackPanel>
 </Grid></Border>
 
-<Border Grid.Row="1" Margin="18,16,18,10" Background="White" Padding="16" CornerRadius="8"><Grid>
+<Border Grid.Row="1" Name="JobPanelBorder" Margin="18,16,18,10" Background="White" Padding="16" CornerRadius="8"><Grid>
 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="220"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="160"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-<TextBlock Text="Customer:" VerticalAlignment="Center" FontWeight="SemiBold"/>
+<TextBlock Name="CustomerLabel" Text="Customer:" VerticalAlignment="Center" FontWeight="SemiBold"/>
 <TextBox Grid.Column="1" Name="CustomerBox" Margin="8,0,16,0" Height="32" Padding="8,5"/>
-<TextBlock Grid.Column="2" Text="Job ref:" VerticalAlignment="Center" FontWeight="SemiBold"/>
+<TextBlock Grid.Column="2" Name="JobLabel" Text="Job ref:" VerticalAlignment="Center" FontWeight="SemiBold"/>
 <TextBox Grid.Column="3" Name="JobBox" Margin="8,0,16,0" Height="32" Padding="8,5"/>
 <Button Grid.Column="4" Name="ScanButton" Content="Run Full Scan" Width="115" Height="34"/>
 <Button Grid.Column="5" Name="CustomerReportButton" Content="Customer Report" Width="125" Height="34" Margin="8,0,0,0" IsEnabled="False"/>
@@ -153,7 +282,7 @@ Add-Type -AssemblyName PresentationFramework
 <StackPanel Grid.Column="8" HorizontalAlignment="Right"><TextBlock Name="ScoreText" FontSize="24" FontWeight="Bold" HorizontalAlignment="Right"/><TextBlock Name="ScoreLabel" Foreground="#6B7280" HorizontalAlignment="Right"/></StackPanel>
 </Grid></Border>
 
-<Border Grid.Row="2" Margin="18,0,18,10" Background="White" Padding="14" CornerRadius="8"><Grid>
+<Border Grid.Row="2" Name="StatsBorder" Margin="18,0,18,10" Background="White" Padding="14" CornerRadius="8"><Grid>
 <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
 <StackPanel><TextBlock Text="HEALTHY" Foreground="#6B7280" FontSize="11"/><TextBlock Name="HealthyCount" Text="0" FontSize="22" FontWeight="Bold"/></StackPanel>
 <StackPanel Grid.Column="1"><TextBlock Text="INFO" Foreground="#6B7280" FontSize="11"/><TextBlock Name="InfoCount" Text="0" FontSize="22" FontWeight="Bold"/></StackPanel>
@@ -163,12 +292,12 @@ Add-Type -AssemblyName PresentationFramework
 <StackPanel Grid.Column="5"><TextBlock Text="TOTAL" Foreground="#6B7280" FontSize="11"/><TextBlock Name="TotalCount" Text="0" FontSize="22" FontWeight="Bold"/></StackPanel>
 </Grid></Border>
 
-<Border Grid.Row="3" Margin="18,0,18,0" Background="White" Padding="10" CornerRadius="8"><TabControl>
+<Border Grid.Row="3" Name="ContentBorder" Margin="18,0,18,0" Background="White" Padding="10" CornerRadius="8"><TabControl Name="MainTabs">
 <TabItem Header="Attention"><Grid Margin="8"><Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-<DataGrid Name="AttentionGrid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"><DataGrid.Columns>
+<DataGrid Name="AttentionGrid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.CanContentScroll="True"><DataGrid.Columns>
 <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="90"/><DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="105"/><DataGridTextColumn Header="Check" Binding="{Binding Name}" Width="210"/><DataGridTextColumn Header="Summary" Binding="{Binding Summary}" Width="*"/>
 </DataGrid.Columns></DataGrid>
-<Border Grid.Column="1" Margin="12,0,0,0" Background="#F9FAFB" Padding="14" BorderBrush="#E5E7EB" BorderThickness="1"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>
+<Border Grid.Column="1" Name="DetailBorder" Margin="12,0,0,0" Background="#F9FAFB" Padding="14" BorderBrush="#E5E7EB" BorderThickness="1"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>
 <TextBlock Name="DetailTitle" Text="Select a finding" FontSize="18" FontWeight="Bold" TextWrapping="Wrap"/><TextBlock Name="DetailStatus" Margin="0,5,0,12" Foreground="#6B7280"/>
 <TextBlock Text="SUMMARY" FontSize="11" Foreground="#6B7280" FontWeight="Bold"/><TextBlock Name="DetailSummary" Margin="0,4,0,14" TextWrapping="Wrap"/>
 <TextBlock Text="DETAILS" FontSize="11" Foreground="#6B7280" FontWeight="Bold"/><TextBlock Name="DetailBody" Margin="0,4,0,14" TextWrapping="Wrap"/>
@@ -176,13 +305,13 @@ Add-Type -AssemblyName PresentationFramework
 <Button Name="CopyDetailsButton" Content="Copy Details" Width="110" Height="30" HorizontalAlignment="Left"/>
 </StackPanel></ScrollViewer></Border></Grid></TabItem>
 
-<TabItem Header="All Results"><DataGrid Name="ResultsGrid" Margin="8" AutoGenerateColumns="False" IsReadOnly="True"><DataGrid.Columns>
+<TabItem Header="All Results"><DataGrid Name="ResultsGrid" Margin="8" AutoGenerateColumns="False" IsReadOnly="True" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.CanContentScroll="True"><DataGrid.Columns>
 <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="110"/><DataGridTextColumn Header="Check" Binding="{Binding Name}" Width="235"/><DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="95"/><DataGridTextColumn Header="Summary" Binding="{Binding Summary}" Width="*"/><DataGridTextColumn Header="Recommendation" Binding="{Binding Recommendation}" Width="280"/>
 </DataGrid.Columns></DataGrid></TabItem>
 
 <TabItem Header="Before / After"><Grid Margin="10">
 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-<Border Background="#F9FAFB" BorderBrush="#E5E7EB" BorderThickness="1" Padding="14" CornerRadius="8"><Grid>
+<Border Name="ComparisonHeaderBorder" Background="#F9FAFB" BorderBrush="#E5E7EB" BorderThickness="1" Padding="14" CornerRadius="8"><Grid>
 <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
 <StackPanel><TextBlock Text="BASELINE" Foreground="#6B7280" FontSize="11"/><TextBlock Name="BaselineScoreText" Text="Not set" FontSize="24" FontWeight="Bold"/></StackPanel>
 <StackPanel Grid.Column="1"><TextBlock Text="CURRENT" Foreground="#6B7280" FontSize="11"/><TextBlock Name="CurrentScoreText" Text="Not set" FontSize="24" FontWeight="Bold"/></StackPanel>
@@ -190,28 +319,53 @@ Add-Type -AssemblyName PresentationFramework
 <StackPanel Grid.Column="3"><TextBlock Text="SCAN COUNT" Foreground="#6B7280" FontSize="11"/><TextBlock Name="ScanCountText" Text="0" FontSize="24" FontWeight="Bold"/></StackPanel>
 </Grid></Border>
 <TextBlock Grid.Row="1" Name="ComparisonSummaryText" Text="The first scan in this session becomes the baseline. Run another scan after service work to compare results." Foreground="#6B7280" Margin="0,12,0,10" TextWrapping="Wrap"/>
-<DataGrid Grid.Row="2" Name="ComparisonGrid" AutoGenerateColumns="False" IsReadOnly="True"><DataGrid.Columns>
+<DataGrid Grid.Row="2" Name="ComparisonGrid" AutoGenerateColumns="False" IsReadOnly="True" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.CanContentScroll="True"><DataGrid.Columns>
 <DataGridTextColumn Header="Change" Binding="{Binding Change}" Width="90"/><DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="100"/><DataGridTextColumn Header="Check" Binding="{Binding Check}" Width="210"/><DataGridTextColumn Header="Before" Binding="{Binding BeforeStatus}" Width="100"/><DataGridTextColumn Header="After" Binding="{Binding AfterStatus}" Width="100"/><DataGridTextColumn Header="Current finding" Binding="{Binding AfterSummary}" Width="*"/>
 </DataGrid.Columns></DataGrid>
 <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,10,0,0"><Button Name="SetBaselineButton" Content="Set Current as Baseline" Width="165" Height="32" IsEnabled="False"/><Button Name="ClearHistoryButton" Content="Clear Session History" Width="145" Height="32" Margin="8,0,0,0"/></StackPanel>
 </Grid></TabItem>
 
-<TabItem Header="Repair Centre"><Grid Margin="10"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="160"/></Grid.RowDefinitions>
+<TabItem Header="Repair Centre"><Grid Margin="10"><Grid.RowDefinitions>
+<RowDefinition Height="Auto"/>
+<RowDefinition Height="3*"/>
+<RowDefinition Height="Auto"/>
+<RowDefinition Height="Auto"/>
+<RowDefinition Height="2*"/>
+</Grid.RowDefinitions>
 <TextBlock Text="Low-risk technician-approved actions only. Run a new scan after service actions to create an after-service comparison." Foreground="#6B7280" Margin="0,0,0,10"/>
-<DataGrid Grid.Row="1" Name="ActionGrid" AutoGenerateColumns="False" CanUserAddRows="False"><DataGrid.Columns>
+<DataGrid Grid.Row="1"
+Name="ActionGrid"
+AutoGenerateColumns="False"
+CanUserAddRows="False"
+VerticalAlignment="Stretch"
+HorizontalAlignment="Stretch"
+ScrollViewer.VerticalScrollBarVisibility="Auto"
+ScrollViewer.HorizontalScrollBarVisibility="Auto"
+ScrollViewer.CanContentScroll="True"
+ScrollViewer.IsDeferredScrollingEnabled="False"><DataGrid.Columns>
 <DataGridCheckBoxColumn Header="Run" Binding="{Binding Selected}" Width="55"/>
 <DataGridTextColumn Header="Category" Binding="{Binding Category}" IsReadOnly="True" Width="100"/>
 <DataGridTextColumn Header="Action" Binding="{Binding Name}" IsReadOnly="True" Width="220"/>
 <DataGridTextColumn Header="Risk" Binding="{Binding Risk}" IsReadOnly="True" Width="70"/>
 <DataGridTextColumn Header="Description" Binding="{Binding Description}" IsReadOnly="True" Width="*"/>
 </DataGrid.Columns></DataGrid>
-<StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,8"><Button Name="RunActionsButton" Content="Run Selected Actions" Width="160" Height="34" IsEnabled="False"/><TextBlock Name="ActionStatusText" Margin="14,8,0,0" Foreground="#6B7280"/></StackPanel>
+<StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,8"><Button Name="RunActionsButton" Content="Run Selected Actions" Width="160" Height="34" IsEnabled="False"/><TextBlock Name="ActionStatusText" Margin="14,8,0,0" Foreground="#6B7280"/></StackPanel>
 <Grid Grid.Row="3" Margin="0,0,0,8">
 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
 <ProgressBar Name="ActionProgressBar" Height="16" Minimum="0" Maximum="100" IsIndeterminate="False"/>
 <Grid Grid.Row="1" Margin="0,5,0,0"><TextBlock Name="ActionProgressText" Text="Ready." Foreground="#6B7280"/><TextBlock Name="ActionElapsedText" Text="" HorizontalAlignment="Right" Foreground="#6B7280"/></Grid>
 </Grid>
-<TextBox Grid.Row="4" Name="ActionLogBox" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="12"/>
+<TextBox Grid.Row="4"
+Name="ActionLogBox"
+IsReadOnly="True"
+VerticalAlignment="Stretch"
+HorizontalAlignment="Stretch"
+TextWrapping="Wrap"
+AcceptsReturn="True"
+VerticalScrollBarVisibility="Auto"
+HorizontalScrollBarVisibility="Auto"
+FontFamily="Consolas"
+FontSize="12"/>
 </Grid></TabItem>
 </TabControl></Border>
 
@@ -234,10 +388,107 @@ Add-Type -AssemblyName PresentationFramework
 
 $reader=New-Object System.Xml.XmlNodeReader $xaml
 $window=[Windows.Markup.XamlReader]::Load($reader)
-foreach($name in @('CustomerBox','JobBox','ScanButton','CustomerReportButton','TechnicianReportButton','OpenReportsButton','ResultsGrid','AttentionGrid','ScoreText','ScoreLabel','StatusText','Progress','ScanProgressText','ScanElapsedText','DeviceText','VersionText','HealthyCount','InfoCount','RecommendCount','WarningCount','CriticalCount','TotalCount','DetailTitle','DetailStatus','DetailSummary','DetailBody','DetailRecommendation','CopyDetailsButton','ActionGrid','RunActionsButton','ActionStatusText','ActionLogBox','ActionProgressBar','ActionProgressText','ActionElapsedText','BaselineScoreText','CurrentScoreText','ScoreChangeText','ScanCountText','ComparisonSummaryText','ComparisonGrid','SetBaselineButton','ClearHistoryButton')){Set-Variable -Name $name -Value $window.FindName($name)}
+foreach($name in @('CustomerBox','JobBox','ScanButton','CustomerReportButton','TechnicianReportButton','OpenReportsButton','ResultsGrid','AttentionGrid','ScoreText','ScoreLabel','StatusText','Progress','ScanProgressText','ScanElapsedText','DeviceText','VersionText','HealthyCount','InfoCount','RecommendCount','WarningCount','CriticalCount','TotalCount','DetailTitle','DetailStatus','DetailSummary','DetailBody','DetailRecommendation','CopyDetailsButton','ActionGrid','RunActionsButton','ActionStatusText','ActionLogBox','ActionProgressBar','ActionProgressText','ActionElapsedText','BaselineScoreText','CurrentScoreText','ScoreChangeText','ScanCountText','ComparisonSummaryText','ComparisonGrid','SetBaselineButton','ClearHistoryButton','HeaderBorder','JobPanelBorder','StatsBorder','ContentBorder','MainTabs','DetailBorder','ComparisonHeaderBorder','LogoPlaceholder','BrandLogo','LogoFallbackText','ThemeButton','CustomerLabel','JobLabel')){Set-Variable -Name $name -Value $window.FindName($name)}
 
 if($Customer){$CustomerBox.Text=$Customer}
 $VersionText.Text="$($Config.app.productSubtitle) | v$($Config.app.version)"
+
+$script:Theme='Light'
+$script:ThemeStatePath=[Environment]::ExpandEnvironmentVariables([string]$Config.ui.themeStateFile)
+
+function Get-RBZSavedTheme {
+    $fallback=[string]$Config.ui.defaultTheme
+    if($fallback -notin @('Light','Dark')){$fallback='Light'}
+
+    if(-not [bool]$Config.ui.rememberTheme){return $fallback}
+
+    try {
+        if(Test-Path $script:ThemeStatePath){
+            $saved=Get-Content -LiteralPath $script:ThemeStatePath -Raw -ErrorAction Stop | ConvertFrom-Json
+            if([string]$saved.theme -in @('Light','Dark')){
+                return [string]$saved.theme
+            }
+        }
+    } catch {}
+
+    return $fallback
+}
+
+function Save-RBZTheme {
+    if(-not [bool]$Config.ui.rememberTheme){return}
+
+    try {
+        $folder=Split-Path $script:ThemeStatePath -Parent
+        if(-not(Test-Path $folder)){
+            New-Item -ItemType Directory -Path $folder -Force | Out-Null
+        }
+
+        [pscustomobject]@{theme=$script:Theme} |
+            ConvertTo-Json |
+            Set-Content -LiteralPath $script:ThemeStatePath -Encoding UTF8
+    } catch {}
+}
+
+function Set-RBZTheme {
+    param([ValidateSet('Light','Dark')][string]$Theme)
+    $script:Theme=$Theme
+    $bc=[System.Windows.Media.BrushConverter]::new()
+    if($Theme -eq 'Dark'){
+        $window.Background='#111827'; $JobPanelBorder.Background='#1F2937'; $StatsBorder.Background='#1F2937'; $ContentBorder.Background='#1F2937'; $DetailBorder.Background='#111827'; $DetailBorder.BorderBrush='#374151'; $ComparisonHeaderBorder.Background='#111827'; $ComparisonHeaderBorder.BorderBrush='#374151'; $MainTabs.Background='#1F2937'; $MainTabs.Foreground='#F3F4F6'
+        $window.Resources['RBZ.Panel']=$bc.ConvertFromString('#111827')
+        $window.Resources['RBZ.PanelAlt']=$bc.ConvertFromString('#1F2937')
+        $window.Resources['RBZ.Control']=$bc.ConvertFromString('#172033')
+        $window.Resources['RBZ.Text']=$bc.ConvertFromString('#F3F4F6')
+        $window.Resources['RBZ.Border']=$bc.ConvertFromString('#475569')
+        $window.Resources['RBZ.Header']=$bc.ConvertFromString('#263449')
+        $window.Resources['RBZ.HeaderText']=$bc.ConvertFromString('#F8FAFC')
+        $window.Resources['RBZ.Selection']=$bc.ConvertFromString('#334155')
+        $window.Resources['RBZ.SelectionText']=$bc.ConvertFromString('#FFFFFF')
+        foreach($text in @($ScoreText,$HealthyCount,$InfoCount,$RecommendCount,$WarningCount,$CriticalCount,$TotalCount,$DetailTitle,$DetailSummary,$DetailBody,$DetailRecommendation,$BaselineScoreText,$CurrentScoreText,$ScoreChangeText,$ScanCountText)){$text.Foreground='#F3F4F6'}
+        $ScoreLabel.Foreground='#CBD5E1';$DetailStatus.Foreground='#94A3B8';$ComparisonSummaryText.Foreground='#CBD5E1';$ActionStatusText.Foreground='#CBD5E1';$ActionProgressText.Foreground='#CBD5E1';$ActionElapsedText.Foreground='#CBD5E1';$StatusText.Foreground='#CBD5E1';$ScanProgressText.Foreground='#94A3B8';$ScanElapsedText.Foreground='#CBD5E1';$CustomerLabel.Foreground='#F3F4F6'
+        $JobLabel.Foreground='#F3F4F6'
+        $ThemeButton.Content='Light mode'
+    } else {
+        $window.Background='#F3F4F6'; $JobPanelBorder.Background='White'; $StatsBorder.Background='White'; $ContentBorder.Background='White'; $DetailBorder.Background='#F9FAFB'; $DetailBorder.BorderBrush='#E5E7EB'; $ComparisonHeaderBorder.Background='#F9FAFB'; $ComparisonHeaderBorder.BorderBrush='#E5E7EB'; $MainTabs.Background='White'; $MainTabs.Foreground='#111827'
+        $window.Resources['RBZ.Panel']=$bc.ConvertFromString('#FFFFFF')
+        $window.Resources['RBZ.PanelAlt']=$bc.ConvertFromString('#F9FAFB')
+        $window.Resources['RBZ.Control']=$bc.ConvertFromString('#FFFFFF')
+        $window.Resources['RBZ.Text']=$bc.ConvertFromString('#111827')
+        $window.Resources['RBZ.Border']=$bc.ConvertFromString('#D1D5DB')
+        $window.Resources['RBZ.Header']=$bc.ConvertFromString('#F3F4F6')
+        $window.Resources['RBZ.HeaderText']=$bc.ConvertFromString('#111827')
+        $window.Resources['RBZ.Selection']=$bc.ConvertFromString('#DBEAFE')
+        $window.Resources['RBZ.SelectionText']=$bc.ConvertFromString('#111827')
+        foreach($text in @($ScoreText,$HealthyCount,$InfoCount,$RecommendCount,$WarningCount,$CriticalCount,$TotalCount,$DetailTitle,$DetailSummary,$DetailBody,$DetailRecommendation,$BaselineScoreText,$CurrentScoreText,$ScoreChangeText,$ScanCountText)){$text.Foreground='#111827'}
+        $ScoreLabel.Foreground='#6B7280';$DetailStatus.Foreground='#6B7280';$ComparisonSummaryText.Foreground='#6B7280';$ActionStatusText.Foreground='#6B7280';$ActionProgressText.Foreground='#6B7280';$ActionElapsedText.Foreground='#6B7280';$StatusText.Foreground='#6B7280';$ScanProgressText.Foreground='#9CA3AF';$ScanElapsedText.Foreground='#6B7280';$CustomerLabel.Foreground='#111827'
+        $JobLabel.Foreground='#111827'
+        $ThemeButton.Content='Dark mode'
+    }
+}
+
+$ThemeButton.Add_Click({
+    $next=if($script:Theme -eq 'Dark'){'Light'}else{'Dark'}
+    Set-RBZTheme -Theme $next
+    Save-RBZTheme
+})
+
+# Header logo: use Assets\rbz-logo.png when present; otherwise retain RBZ placeholder.
+try {
+    $logoPath=Resolve-RBZPath -BasePath $Root -ConfiguredPath ([string]$Config.ui.logoPath)
+    if(Test-Path $logoPath){
+        $bitmap=New-Object System.Windows.Media.Imaging.BitmapImage
+        $bitmap.BeginInit()
+        $bitmap.CacheOption=[System.Windows.Media.Imaging.BitmapCacheOption]::OnLoad
+        $bitmap.UriSource=New-Object System.Uri($logoPath)
+        $bitmap.EndInit()
+        $BrandLogo.Source=$bitmap
+        $BrandLogo.Visibility='Visible'
+        $LogoFallbackText.Visibility='Collapsed'
+    }
+} catch {}
+
+Set-RBZTheme -Theme (Get-RBZSavedTheme)
+
 $DeviceText.Text="$env:COMPUTERNAME | $env:USERNAME"
 $script:Findings=$null
 $script:ServiceLog=[System.Collections.Generic.List[object]]::new()

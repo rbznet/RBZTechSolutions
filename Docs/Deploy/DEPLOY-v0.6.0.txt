@@ -1,0 +1,129 @@
+RBZ PC Health v0.6.0
+
+NEW:
+- Persistent Light/Dark mode
+- Header logo placeholder
+- Automatic Assets\rbz-logo.png loading
+- Deploy-note folder: Docs\Deploy
+- One-time deploy-note mover: Tools\Move-DeployNotes.ps1
+
+COPY/REPLACE:
+- Config\settings.json
+- RBZHealth.ps1
+- README.md
+- Assets\LOGO-PLACEHOLDER.txt
+- Tools\Move-DeployNotes.ps1
+- Docs\Deploy\DEPLOY-v0.6.0.txt
+
+THEN MOVE OLD DEPLOY NOTES:
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Move-DeployNotes.ps1
+
+LOCAL TEST FROM WINDOWS TERMINAL:
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\RBZHealth.ps1
+
+TEST:
+1. Confirm v0.6.0 opens.
+2. Run Full Scan and verify v0.5.2 progress still works.
+3. Toggle Dark mode.
+4. Close/reopen and verify Dark mode persists.
+5. Toggle Light mode and verify persistence.
+6. Check all four tabs remain readable in both themes.
+7. Confirm RBZ placeholder is visible without rbz-logo.png.
+8. Optionally add Assets\rbz-logo.png and verify it replaces the placeholder.
+9. Test a low-risk Repair Centre action.
+10. Confirm Before/After and both reports remain functional.
+
+GIT:
+git status
+git diff
+
+git add -A
+git commit -m "RBZ PC Health v0.6.0 add themes branding and organise deploy notes"
+git push origin main
+
+BOOTSTRAP:
+irm https://raw.githubusercontent.com/rbznet/RBZTechSolutions/main/bootstrap.ps1 | iex
+
+RELEASE:
+.\build-release.ps1
+
+gh release create v0.6.0 `
+  ".\dist\RBZ-PC-Health-0.6.0.zip" `
+  ".\dist\RBZ-PC-Health-0.6.0.sha256" `
+  --repo rbznet/RBZTechSolutions `
+  --title "RBZ PC Health v0.6.0" `
+  --notes "Adds persistent light/dark mode, RBZ logo placeholder and repository deploy-note housekeeping."
+
+
+RC2: verify DataGrid headers, tabs, buttons, textboxes and Repair Centre rows are readable in both themes.
+
+
+RC3 TEST:
+- Customer and Job ref labels readable in Dark mode.
+- Selected tab stays dark.
+- Disabled report buttons stay dark/muted.
+- Toggle back to Light mode and verify all three return correctly.
+
+
+RC4 TEST:
+- Customer Report and Technician Report remain dark/muted before the first scan.
+- Hover over every button in Dark mode: no light/white flash.
+- Pressed state remains readable.
+- Light mode still uses normal light button states.
+
+
+RC5 TEST:
+- Run Full Scan in Dark mode.
+- Healthy rows: pale green background with dark readable text.
+- Info rows: pale blue background with dark readable text.
+- Recommend rows: pale yellow background with dark readable text.
+- Warning rows: pale orange background with dark readable text.
+- Normal/unclassified rows: dark background with light text.
+- Selected rows remain readable.
+
+
+RC6 TEST:
+- Open Repair Centre at normal size and maximised.
+- Confirm the action list expands vertically and displays more actions.
+- Confirm the action log uses the remaining space rather than forcing the action list to a few rows.
+- Resize smaller and confirm neither section collapses.
+
+
+RC7 TEST:
+- Launch the app and confirm it opens noticeably larger.
+- Open Repair Centre immediately.
+- Confirm substantially more action rows are visible without maximising.
+- Maximise and confirm the action list continues to expand.
+- Confirm the repair log remains usable and does not dominate the tab.
+
+
+RC9 TEST:
+- Application opens without XAML parser errors.
+- Repair Centre action list receives more vertical space than the log.
+- Action list vertical scrollbar appears when needed.
+- Action log has vertical and horizontal scrollbars when needed.
+- Attention, All Results and Before / After grids still scroll.
+
+
+RC10 TEST:
+- Open Repair Centre.
+- Confirm a vertical scrollbar is permanently visible at the right edge of the action list.
+- Confirm the mouse wheel scrolls through every repair action.
+- Drag the scrollbar thumb to the final action.
+- Check All Results remains unchanged.
+
+
+RC11 TEST:
+- Open Repair Centre.
+- Confirm roughly 10–12 action rows are visible.
+- Use mouse wheel over the action list and confirm it moves.
+- Drag the vertical scrollbar thumb to the bottom and confirm final actions become visible.
+- Confirm the live action log still gets the remaining space below.
+
+
+RC12 TEST:
+- Resize the window vertically smaller and larger.
+- Confirm Run Selected Actions, progress/status and action log remain visible.
+- Confirm ActionGrid shrinks when needed and its vertical scrollbar becomes functional.
+- Confirm mouse wheel and scrollbar thumb reach every repair action.
+- Maximise again and confirm both regions expand.

@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "RBZ PC Health",
-    "version": "0.5.2",
+    "version": "0.6.0",
     "company": "RBZ Tech Solutions Ltd",
     "productSubtitle": "Technician Diagnostic & Service Suite",
     "reportPrefix": "RBZ-PC-Health",
@@ -134,5 +134,11 @@
     "enabled": true,
     "showElapsedTime": true,
     "showCompletedModules": true
+  },
+  "ui": {
+    "defaultTheme": "Light",
+    "rememberTheme": true,
+    "themeStateFile": "%LOCALAPPDATA%\\RBZ PC Health\\ui.json",
+    "logoPath": ".\\Assets\\rbz-logo.png"
   }
 }

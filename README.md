@@ -243,3 +243,142 @@ The footer shows:
 
 The WPF dispatcher is updated between modules so the interface remains responsive.
 Repair logic is unchanged from v0.5.1.
+
+
+## v0.6.0 — Theme, branding and repository housekeeping
+
+### Light / Dark mode
+The application header now includes a Light/Dark mode toggle.
+
+The selected theme is persisted to:
+
+`%LOCALAPPDATA%\RBZ PC Health\ui.json`
+
+and restored on the next launch.
+
+### Logo placeholder
+The application header now contains an RBZ branding tile.
+
+To replace the placeholder, add a PNG at:
+
+`Assets\rbz-logo.png`
+
+A transparent square or near-square image of at least 256x256 is recommended.
+
+If the file is absent, the built-in `RBZ` text placeholder remains visible.
+
+### Deploy notes
+Historical deployment notes should now be stored under:
+
+`Docs\Deploy\`
+
+Run `Tools\Move-DeployNotes.ps1` once after extracting the v0.6.0 update to move existing root-level `DEPLOY-v0*.txt` files into that folder.
+
+All future deploy notes should be created under `Docs\Deploy`.
+
+
+### v0.6.0 RC2 dark-mode contrast fix
+Dark mode now themes DataGrid headers/cells, tabs, buttons, text boxes, checkboxes and selection states through shared dynamic resources.
+
+
+### v0.6.0 RC3 dark-mode cleanup
+
+- Customer and Job ref labels now switch colour with the active theme.
+- Selected tab headers use a theme-aware custom template instead of the default white WPF selected-tab style.
+- Disabled buttons now use muted theme colours instead of Windows' light disabled-button appearance.
+
+
+### v0.6.0 RC4 button-state fix
+
+Buttons now use a full theme-aware WPF template. This fixes light disabled report buttons and light hover flashes in Dark mode. Normal, hover, pressed and disabled states now use RBZ theme resources.
+
+
+### v0.6.0 RC5 DataGrid status-row contrast fix
+
+DataGrid cells no longer force the global theme foreground colour.
+
+Cells now inherit foreground from their parent row. This means:
+
+- Healthy / Info / Recommend / Warning / Critical rows keep their pale status backgrounds with dark text.
+- Ordinary dark-mode rows keep light text.
+- Selected cells still use the theme selection colours.
+
+
+### v0.6.0 RC6 Repair Centre layout fix
+
+The Repair Centre now uses proportional vertical space instead of a cramped action list and fixed 160px log.
+
+- Action list: `2*`
+- Action log: `3*`
+- Action list minimum height: 190px
+- Action log minimum height: 180px
+
+Both sections expand with the window and remain usable at smaller sizes.
+
+
+### v0.6.0 RC7 window sizing and Repair Centre balance
+
+The application now opens at a larger default size:
+
+- Width: 1500
+- Height: 940
+- Minimum width: 1180
+- Minimum height: 800
+
+Repair Centre vertical allocation is also rebalanced:
+
+- Action list: 3*
+- Action log: 2*
+- Action list minimum height: 260px
+- Action log minimum height: 150px
+
+This prioritises the action catalogue while still keeping live repair output visible.
+
+
+### v0.6.0 RC9 XAML and Repair Centre fix
+
+RC9 corrects two issues introduced during the scrollbar/layout patches:
+
+- `ActionLogBox` XAML is rebuilt as a valid self-closing TextBox with explicit vertical and horizontal scrollbars.
+- Repair Centre row proportions are corrected to:
+  - Action list: `3*`
+  - Action log: `2*`
+
+The action catalogue therefore receives more space than the live log.
+
+
+### v0.6.0 RC10 Repair Centre scrollbar fix
+
+The Repair Centre action list now forces its vertical scrollbar to remain visible rather than relying on WPF's automatic scrollbar calculation.
+
+`ActionGrid` now uses:
+- `ScrollViewer.VerticalScrollBarVisibility="Visible"`
+- `ScrollViewer.HorizontalScrollBarVisibility="Auto"`
+- `ScrollViewer.CanContentScroll="True"`
+- `ScrollViewer.IsDeferredScrollingEnabled="False"`
+
+Other result grids retain automatic scrollbar behaviour.
+
+
+### v0.6.0 RC11 Repair Centre functional scrolling
+
+RC10 forced the scrollbar visible, but the action DataGrid was still being measured at effectively its full content height and then clipped by its parent. That produces a scrollbar which is visible but has no usable scroll extent.
+
+RC11 fixes the layout itself:
+
+- Repair action row is constrained to 320px.
+- ActionGrid no longer has a competing MinHeight.
+- Vertical scrollbar returns to Auto.
+- The action log consumes the remaining vertical space.
+
+This gives the DataGrid's internal ScrollViewer a genuine viewport, so wheel scrolling and scrollbar dragging work normally.
+
+
+### v0.6.0 RC12 responsive Repair Centre
+
+The fixed 320px action row from RC11 has been removed. Repair Centre now uses responsive proportional rows:
+
+- Action list: `3*`
+- Action log: `2*`
+
+No fixed or minimum height is applied to either area, so the layout can shrink and grow with the application window while the DataGrid owns its own scrolling.
