@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "RBZ PC Health",
-    "version": "0.5.1",
+    "version": "0.5.2",
     "company": "RBZ Tech Solutions Ltd",
     "productSubtitle": "Technician Diagnostic & Service Suite",
     "reportPrefix": "RBZ-PC-Health",
@@ -129,5 +129,10 @@
       "Warning": 0.7,
       "Critical": 0.25
     }
+  },
+  "scanProgress": {
+    "enabled": true,
+    "showElapsedTime": true,
+    "showCompletedModules": true
   }
 }

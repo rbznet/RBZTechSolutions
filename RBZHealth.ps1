@@ -61,13 +61,53 @@ Get-ChildItem $modulePath -Filter '*.psm1' | Where-Object Name -ne 'Common.psm1'
 $reportsPath=Resolve-RBZPath -BasePath $Root -ConfiguredPath $Config.paths.reports
 
 function Invoke-RBZScan {
+    param([scriptblock]$ProgressCallback=$null)
+
     $all=[System.Collections.Generic.List[object]]::new()
-    foreach($fn in @('Get-RBZSystemFindings','Get-RBZStorageFindings','Get-RBZSecurityFindings','Get-RBZNetworkFindings','Get-RBZDeviceFindings','Get-RBZBatteryFindings','Get-RBZStartupFindings','Get-RBZUpdateFindings')){
-        if(Get-Command $fn -ErrorAction SilentlyContinue){
-            try{foreach($x in (& $fn -Config $Config)){$all.Add($x)}}
-            catch{$all.Add((New-RBZFinding -Category 'System' -Name $fn -Status 'Warning' -Summary 'A scan module failed.' -Details $_.Exception.Message))}
+    $modules=@(
+        [pscustomobject]@{Name='System';Function='Get-RBZSystemFindings'}
+        [pscustomobject]@{Name='Storage';Function='Get-RBZStorageFindings'}
+        [pscustomobject]@{Name='Security';Function='Get-RBZSecurityFindings'}
+        [pscustomobject]@{Name='Network';Function='Get-RBZNetworkFindings'}
+        [pscustomobject]@{Name='Devices';Function='Get-RBZDeviceFindings'}
+        [pscustomobject]@{Name='Battery';Function='Get-RBZBatteryFindings'}
+        [pscustomobject]@{Name='Startup';Function='Get-RBZStartupFindings'}
+        [pscustomobject]@{Name='Updates';Function='Get-RBZUpdateFindings'}
+    )
+
+    $total=$modules.Count
+    $completed=0
+
+    foreach($module in $modules){
+        if($ProgressCallback){
+            & $ProgressCallback ([pscustomobject]@{
+                Stage="Scanning $($module.Name)"
+                Completed=$completed
+                Total=$total
+                Percent=[math]::Round(($completed/[double]$total)*100,0)
+            })
+        }
+
+        if(Get-Command $module.Function -ErrorAction SilentlyContinue){
+            try{
+                foreach($x in (& $module.Function -Config $Config)){$all.Add($x)}
+            }
+            catch{
+                $all.Add((New-RBZFinding -Category $module.Name -Name $module.Function -Status 'Warning' -Summary 'A scan module failed.' -Details $_.Exception.Message))
+            }
+        }
+
+        $completed++
+        if($ProgressCallback){
+            & $ProgressCallback ([pscustomobject]@{
+                Stage="Completed $($module.Name)"
+                Completed=$completed
+                Total=$total
+                Percent=[math]::Round(($completed/[double]$total)*100,0)
+            })
         }
     }
+
     return $all
 }
 
@@ -175,13 +215,26 @@ Add-Type -AssemblyName PresentationFramework
 </Grid></TabItem>
 </TabControl></Border>
 
-<Border Grid.Row="4" Margin="18,10,18,14"><Grid><ProgressBar Name="Progress" Height="5" IsIndeterminate="True" Visibility="Collapsed" VerticalAlignment="Top"/><TextBlock Name="StatusText" Text="Ready." Margin="0,10,0,0" Foreground="#6B7280"/></Grid></Border>
+<Border Grid.Row="4" Margin="18,10,18,14">
+<Grid>
+<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+<ProgressBar Name="Progress" Height="10" Minimum="0" Maximum="100" IsIndeterminate="False" Visibility="Collapsed"/>
+<Grid Grid.Row="1" Margin="0,8,0,0">
+<Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+<StackPanel>
+<TextBlock Name="StatusText" Text="Ready." Foreground="#6B7280"/>
+<TextBlock Name="ScanProgressText" Text="" Foreground="#9CA3AF" FontSize="11" Margin="0,2,0,0"/>
+</StackPanel>
+<TextBlock Grid.Column="1" Name="ScanElapsedText" Text="" Foreground="#6B7280" VerticalAlignment="Center"/>
+</Grid>
+</Grid>
+</Border>
 </Grid></Window>
 '@
 
 $reader=New-Object System.Xml.XmlNodeReader $xaml
 $window=[Windows.Markup.XamlReader]::Load($reader)
-foreach($name in @('CustomerBox','JobBox','ScanButton','CustomerReportButton','TechnicianReportButton','OpenReportsButton','ResultsGrid','AttentionGrid','ScoreText','ScoreLabel','StatusText','Progress','DeviceText','VersionText','HealthyCount','InfoCount','RecommendCount','WarningCount','CriticalCount','TotalCount','DetailTitle','DetailStatus','DetailSummary','DetailBody','DetailRecommendation','CopyDetailsButton','ActionGrid','RunActionsButton','ActionStatusText','ActionLogBox','ActionProgressBar','ActionProgressText','ActionElapsedText','BaselineScoreText','CurrentScoreText','ScoreChangeText','ScanCountText','ComparisonSummaryText','ComparisonGrid','SetBaselineButton','ClearHistoryButton')){Set-Variable -Name $name -Value $window.FindName($name)}
+foreach($name in @('CustomerBox','JobBox','ScanButton','CustomerReportButton','TechnicianReportButton','OpenReportsButton','ResultsGrid','AttentionGrid','ScoreText','ScoreLabel','StatusText','Progress','ScanProgressText','ScanElapsedText','DeviceText','VersionText','HealthyCount','InfoCount','RecommendCount','WarningCount','CriticalCount','TotalCount','DetailTitle','DetailStatus','DetailSummary','DetailBody','DetailRecommendation','CopyDetailsButton','ActionGrid','RunActionsButton','ActionStatusText','ActionLogBox','ActionProgressBar','ActionProgressText','ActionElapsedText','BaselineScoreText','CurrentScoreText','ScoreChangeText','ScanCountText','ComparisonSummaryText','ComparisonGrid','SetBaselineButton','ClearHistoryButton')){Set-Variable -Name $name -Value $window.FindName($name)}
 
 if($Customer){$CustomerBox.Text=$Customer}
 $VersionText.Text="$($Config.app.productSubtitle) | v$($Config.app.version)"
@@ -228,85 +281,94 @@ $ClearHistoryButton.Add_Click({$script:ScanHistory.Clear();$script:BaselineSnaps
 
 $ScanButton.Add_Click({
     try{
-        $StatusText.Text='Scanning system...';$Progress.Visibility='Visible';$ScanButton.IsEnabled=$false;$window.Cursor='Wait'
-        $script:Findings=Invoke-RBZScan;$ResultsGrid.ItemsSource=$script:Findings
+        $scanStarted=Get-Date
+
+        $StatusText.Text='Scanning system...'
+        $ScanProgressText.Text='Preparing scan...'
+        $ScanElapsedText.Text='00:00:00'
+        $Progress.Visibility='Visible'
+        $Progress.IsIndeterminate=$false
+        $Progress.Value=0
+
+        $ScanButton.IsEnabled=$false
+        $CustomerReportButton.IsEnabled=$false
+        $TechnicianReportButton.IsEnabled=$false
+        $RunActionsButton.IsEnabled=$false
+        $window.Cursor='Wait'
+
+        $progressCallback={
+            param($state)
+
+            $Progress.Value=[double]$state.Percent
+            $StatusText.Text=$state.Stage
+            $ScanProgressText.Text="Module $($state.Completed) of $($state.Total) | $($state.Percent)%"
+            $ScanElapsedText.Text=((Get-Date)-$scanStarted).ToString('hh\:mm\:ss')
+
+            $window.Dispatcher.Invoke(
+                [action]{},
+                [System.Windows.Threading.DispatcherPriority]::Background
+            )
+        }
+
+        $script:Findings=Invoke-RBZScan -ProgressCallback $progressCallback
+        $ResultsGrid.ItemsSource=$script:Findings
+
         $snapshot=New-RBZScanSnapshot -Findings $script:Findings -Config $Config -Sequence ($script:ScanHistory.Count+1)
         $script:ScanHistory.Add($snapshot)
-        while($script:ScanHistory.Count -gt [int]$Config.session.maxInMemoryScans){$script:ScanHistory.RemoveAt(0)}
-        if(-not $script:BaselineSnapshot -and $Config.session.autoSetFirstScanAsBaseline){$script:BaselineSnapshot=$snapshot}
+
+        while($script:ScanHistory.Count -gt [int]$Config.session.maxInMemoryScans){
+            $script:ScanHistory.RemoveAt(0)
+        }
+
+        if(-not $script:BaselineSnapshot -and $Config.session.autoSetFirstScanAsBaseline){
+            $script:BaselineSnapshot=$snapshot
+        }
+
         $script:CurrentSnapshot=$snapshot
         Update-RBZComparisonView
+
         $rank=@{'Critical'=0;'Warning'=1;'Recommend'=2}
-        $attention=@($script:Findings|Where-Object Status -in @('Recommend','Warning','Critical')|Sort-Object @{Expression={$rank[$_.Status]}},Category,Name)
+        $attention=@(
+            $script:Findings |
+            Where-Object Status -in @('Recommend','Warning','Critical') |
+            Sort-Object @{Expression={$rank[$_.Status]}},Category,Name
+        )
         $AttentionGrid.ItemsSource=$attention
-        $score=Get-RBZHealthScore -Findings $script:Findings -Config $Config;$ScoreText.Text="$score/100";$ScoreLabel.Text=Get-RBZScoreLabel -Score $score
-        $HealthyCount.Text=@($script:Findings|Where-Object Status -eq 'Healthy').Count;$InfoCount.Text=@($script:Findings|Where-Object Status -eq 'Info').Count
-        $RecommendCount.Text=@($script:Findings|Where-Object Status -eq 'Recommend').Count;$WarningCount.Text=@($script:Findings|Where-Object Status -eq 'Warning').Count
-        $CriticalCount.Text=@($script:Findings|Where-Object Status -eq 'Critical').Count;$TotalCount.Text=$script:Findings.Count
+
+        $score=Get-RBZHealthScore -Findings $script:Findings -Config $Config
+        $ScoreText.Text="$score/100"
+        $ScoreLabel.Text=Get-RBZScoreLabel -Score $score
+
+        $HealthyCount.Text=@($script:Findings|Where-Object Status -eq 'Healthy').Count
+        $InfoCount.Text=@($script:Findings|Where-Object Status -eq 'Info').Count
+        $RecommendCount.Text=@($script:Findings|Where-Object Status -eq 'Recommend').Count
+        $WarningCount.Text=@($script:Findings|Where-Object Status -eq 'Warning').Count
+        $CriticalCount.Text=@($script:Findings|Where-Object Status -eq 'Critical').Count
+        $TotalCount.Text=$script:Findings.Count
+
         if($attention.Count){$AttentionGrid.SelectedIndex=0}
-        $CustomerReportButton.IsEnabled=$true;$TechnicianReportButton.IsEnabled=$true;$RunActionsButton.IsEnabled=[bool]$Config.remediation.enabled
+
+        $Progress.Value=100
+        $ScanProgressText.Text='Module 8 of 8 | 100%'
+        $ScanElapsedText.Text=((Get-Date)-$scanStarted).ToString('hh\:mm\:ss')
+
+        $CustomerReportButton.IsEnabled=$true
+        $TechnicianReportButton.IsEnabled=$true
+        $RunActionsButton.IsEnabled=[bool]$Config.remediation.enabled
+
         $StatusText.Text="Scan complete: $($script:Findings.Count) checks."
-    }catch{[System.Windows.MessageBox]::Show($_.Exception.Message,'RBZ PC Health')|Out-Null;$StatusText.Text='Scan failed.'}
-    finally{$Progress.Visibility='Collapsed';$window.Cursor=$null;$ScanButton.IsEnabled=$true}
+    }
+    catch{
+        [System.Windows.MessageBox]::Show($_.Exception.Message,'RBZ PC Health')|Out-Null
+        $StatusText.Text='Scan failed.'
+        $ScanProgressText.Text=''
+    }
+    finally{
+        $window.Cursor=$null
+        $ScanButton.IsEnabled=$true
+        $Progress.Visibility='Collapsed'
+    }
 })
-
-function Show-RBZSystemProtectionPrompt {
-    param([string]$FailureMessage='The pre-repair restore point could not be created or verified.')
-
-    [xml]$dialogXaml=@'
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        Title="RBZ PC Health - Restore Point"
-        Height="340" Width="650" ResizeMode="NoResize"
-        WindowStartupLocation="CenterOwner" Background="#F3F4F6">
-  <Grid Margin="18">
-    <Grid.RowDefinitions>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="*"/>
-      <RowDefinition Height="Auto"/>
-    </Grid.RowDefinitions>
-
-    <StackPanel>
-      <TextBlock Text="Pre-repair restore point could not be verified" FontSize="21" FontWeight="Bold"/>
-      <TextBlock Margin="0,8,0,0" TextWrapping="Wrap"
-                 Text="RBZ PC Health attempted to create a restore point before this Medium-risk repair, but creation or verification failed."/>
-    </StackPanel>
-
-    <Border Grid.Row="1" Background="#FFF7ED" BorderBrush="#FDBA74" BorderThickness="1"
-            CornerRadius="7" Padding="10" Margin="0,12,0,10">
-      <TextBlock Name="FailureText" TextWrapping="Wrap"/>
-    </Border>
-
-    <Border Grid.Row="2" Background="White" BorderBrush="#E5E7EB" BorderThickness="1"
-            CornerRadius="7" Padding="12">
-      <TextBlock TextWrapping="Wrap">
-        <Run Text="Enable Protection &amp; Retry" FontWeight="Bold"/><Run Text=": attempt to enable System Protection, configure restore storage, then create and verify the restore point again."/>
-        <LineBreak/><LineBreak/>
-        <Run Text="Continue Without Restore Point" FontWeight="Bold"/><Run Text=": run the repair without rollback protection. This is explicitly logged."/>
-      </TextBlock>
-    </Border>
-
-    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
-      <Button Name="EnableButton" Content="Enable Protection &amp; Retry" Width="175" Height="36"/>
-      <Button Name="SkipButton" Content="Continue Without Restore Point" Width="205" Height="36" Margin="8,0,0,0"/>
-      <Button Name="CancelButton" Content="Cancel Repair" Width="110" Height="36" Margin="8,0,0,0"/>
-    </StackPanel>
-  </Grid>
-</Window>
-'@
-
-    $reader=New-Object System.Xml.XmlNodeReader $dialogXaml
-    $dialog=[Windows.Markup.XamlReader]::Load($reader)
-    $dialog.Owner=$window
-    $dialog.FindName('FailureText').Text=$FailureMessage
-    $script:ProtectionChoice='Cancel'
-
-    $dialog.FindName('EnableButton').Add_Click({$script:ProtectionChoice='Enable';$dialog.Close()})
-    $dialog.FindName('SkipButton').Add_Click({$script:ProtectionChoice='Skip';$dialog.Close()})
-    $dialog.FindName('CancelButton').Add_Click({$script:ProtectionChoice='Cancel';$dialog.Close()})
-    $dialog.ShowDialog()|Out-Null
-    return $script:ProtectionChoice
-}
 
 $RunActionsButton.Add_Click({
     $selected=@($script:Actions|Where-Object Selected -eq $true)

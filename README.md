@@ -228,3 +228,18 @@ Restore-point creation is therefore simplified back to the native same-process w
 5. Continue with DISM/SFC only after successful verification, unless the technician explicitly chooses to continue without one.
 
 PowerShell 7 remains suitable for launching the script; RBZ handles the runtime hand-off automatically.
+
+
+## v0.5.2 Full Scan progress
+
+Run Full Scan now displays real module-level progress across:
+System, Storage, Security, Network, Devices, Battery, Startup and Updates.
+
+The footer shows:
+- current module/stage
+- completed module count
+- percentage complete
+- elapsed time
+
+The WPF dispatcher is updated between modules so the interface remains responsive.
+Repair logic is unchanged from v0.5.1.
