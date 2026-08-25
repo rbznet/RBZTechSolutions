@@ -1,0 +1,38 @@
+RBZ PC Health v0.7.0 RC8
+
+REPLACE:
+- Modules\Network.psm1
+- Config\settings.json
+
+RUN:
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\RBZHealth.ps1
+
+RC8 NETWORK TEST:
+1. Run Full Scan.
+2. Active adapter should now show IPv4 directly in Summary.
+3. Open Active adapter Details and verify:
+   - adapter/description
+   - interface index
+   - link speed
+   - MAC
+   - IPv4
+   - gateway
+   - DNS
+   - DHCP
+   - interface metric
+   - network profile/name where available
+4. Confirm `DNS configuration` appears Healthy when DNS servers exist.
+5. Confirm `Default gateway` appears:
+   - Healthy when ping replies cleanly
+   - Recommend only for measurable high latency/packet loss
+   - Info, NOT Warning, when the gateway simply blocks ICMP
+6. DNS resolution should include elapsed milliseconds.
+7. Existing TCP 443, Microsoft connectivity and HTTPS/TLS tests must remain.
+8. Confirm RC7 service/startup, RC6 devices, storage/SMART, Event Log, UI and Repair Centre are unchanged.
+
+DEFAULT ADVISORY THRESHOLDS:
+Gateway average latency: 50 ms
+Gateway packet loss: 25%
+DNS resolution: 1000 ms
+
+These are advisory thresholds, not proof of a fault.
