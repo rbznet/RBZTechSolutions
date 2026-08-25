@@ -54,3 +54,23 @@ RC3 TEST:
 4. Confirm useful values such as qbcore.dll / 0x80000003 remain visible.
 5. Raw recent event examples should remain unchanged.
 6. Recheck Storage event log health and confirm benign healthy NTFS 98 events remain excluded.
+
+
+RC4 STORAGE TEST:
+1. Run Full Scan on desktop and laptop.
+2. Open each physical disk and reliability-data finding.
+3. Check temperature, wear, power-on hours and error counters where exposed.
+4. Drives with no reliability counters should show Info, not Warning.
+5. Healthy physical disks must remain Healthy when reliability data is unavailable.
+6. Existing Event Log, UI and Repair Centre behaviour must remain unchanged.
+
+RUN:
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\RBZHealth.ps1
+
+
+RC5 STORAGE TEST:
+1. Run Full Scan.
+2. Confirm exactly one All Results row appears per physical disk.
+3. Confirm there are no separate `Disk N reliability data` rows.
+4. Open each disk row and verify temperature, wear and reliability counters still appear in Details.
+5. Confirm unsupported reliability data is explained inside the main disk finding rather than as a duplicate row.

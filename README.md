@@ -429,3 +429,36 @@ Grouped application crash summaries now suppress placeholder metadata that does 
 - equivalent empty/zero exception values
 
 Raw Event Viewer examples remain unchanged underneath the grouped summary so technicians can still inspect the original event data.
+
+
+### v0.7.0 RC4 — deeper disk health / reliability diagnostics
+
+Storage diagnostics now query Windows Storage Reliability Counters when supported.
+
+Possible telemetry includes:
+- temperature / maximum temperature
+- SSD/NVMe wear percentage used
+- power-on hours
+- corrected and uncorrected read/write errors
+- latency maxima
+- start/stop and load/unload cycles
+
+Missing reliability data is `Info`, not `Healthy` or `Warning`. Physical-disk HealthStatus / OperationalStatus are still assessed separately.
+
+
+### v0.7.0 RC5 — consolidated disk findings
+
+Physical disk and Storage Reliability Counter results are now combined into a single finding per drive.
+
+All Results therefore shows one row per physical disk rather than a second `Disk N reliability data` row.
+
+The drive Details pane still contains:
+- temperature / maximum temperature
+- wear percentage used
+- power-on hours
+- read/write error counters
+- latency maxima
+- cycle counters
+- firmware and serial details
+
+If reliability counters are unavailable, the main disk finding explains that in Details/Recommendation without creating a duplicate row.

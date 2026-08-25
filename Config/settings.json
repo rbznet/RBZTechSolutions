@@ -152,5 +152,14 @@
     "applicationPerAppWarningCount": 5,
     "applicationTotalRecommendCount": 10,
     "ignoreHealthyNtfs98": true
+  },
+  "storage": {
+    "reliabilityCounters": true,
+    "temperatureWarningC": 60,
+    "temperatureCriticalC": 75,
+    "wearWarningPercent": 80,
+    "wearCriticalPercent": 95,
+    "uncorrectedErrorsWarning": 1,
+    "powerOnHoursInfo": true
   }
 }
