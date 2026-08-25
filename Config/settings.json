@@ -164,5 +164,25 @@
   },
   "devices": {
     "staleDriverYears": 5
+  },
+  "services": {
+    "enabled": true,
+    "reportMissingAsInfo": false,
+    "reportStoppedThirdPartyAutoAsInfo": true,
+    "monitoredCoreServices": [
+      "RpcSs",
+      "DcomLaunch",
+      "EventLog",
+      "PlugPlay",
+      "Power",
+      "ProfSvc",
+      "Schedule",
+      "SamSs",
+      "Dhcp",
+      "Dnscache",
+      "BFE",
+      "MpsSvc",
+      "Winmgmt"
+    ]
   }
 }
