@@ -382,3 +382,50 @@ The fixed 320px action row from RC11 has been removed. Repair Centre now uses re
 - Action log: `2*`
 
 No fixed or minimum height is applied to either area, so the layout can shrink and grow with the application window while the DataGrid owns its own scrolling.
+
+
+## v0.7.0 RC1 — Event Log + crash diagnostics
+
+Full Scan now contains nine modules. The new `Modules\EventLog.psm1` adds targeted stability checks rather than treating every Event Viewer error as a fault.
+
+New checks:
+- Unexpected shutdowns / Kernel-Power history
+- BSOD / BugCheck and recent minidump history
+- WHEA hardware errors
+- Targeted disk, NTFS and storage-controller event errors
+- Repeated application crashes/hangs with thresholds to suppress isolated noise
+
+The supplied RBZ Tech Solutions monochrome artwork is installed as `Assets\rbz-logo.png`; the header logo area has been widened to display the full mark.
+
+
+### v0.7.0 RC2 — Event classification refinement
+
+RC2 improves the first real-world Event Log classifications.
+
+#### Storage
+- Healthy NTFS Event ID 98 entries containing `is healthy` / `No action is needed` are ignored.
+- Disk 7/51/153, storage reset 129, NTFS corruption-oriented events and non-benign NTFS 98 remain actionable.
+- Storage findings now report **actionable** events rather than raw matching event count.
+
+#### Application crashes
+Crash/hang events are grouped by executable.
+
+Default scoring:
+- 3+ failures from the same app → Recommend
+- 5+ failures from the same app → Warning
+- 10+ total failures spread across unrelated apps → Recommend
+- otherwise → Info
+
+Details now show the top recurring applications plus common faulting module and exception code where available.
+
+
+### v0.7.0 RC3 — cleaner crash diagnostics
+
+Grouped application crash summaries now suppress placeholder metadata that does not help diagnosis:
+
+- `module=unknown`
+- empty/none/N/A modules
+- `exception=0x00000000`
+- equivalent empty/zero exception values
+
+Raw Event Viewer examples remain unchanged underneath the grouped summary so technicians can still inspect the original event data.

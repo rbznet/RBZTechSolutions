@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "RBZ PC Health",
-    "version": "0.6.0",
+    "version": "0.7.0",
     "company": "RBZ Tech Solutions Ltd",
     "productSubtitle": "Technician Diagnostic & Service Suite",
     "reportPrefix": "RBZ-PC-Health",
@@ -140,5 +140,17 @@
     "rememberTheme": true,
     "themeStateFile": "%LOCALAPPDATA%\\RBZ PC Health\\ui.json",
     "logoPath": ".\\Assets\\rbz-logo.png"
+  },
+  "eventLog": {
+    "lookbackDays": 7,
+    "minidumpLookbackDays": 30,
+    "unexpectedShutdownWarningCount": 2,
+    "applicationCrashRecommendCount": 3,
+    "applicationCrashWarningCount": 10,
+    "maxEventsInDetails": 8,
+    "applicationPerAppRecommendCount": 3,
+    "applicationPerAppWarningCount": 5,
+    "applicationTotalRecommendCount": 10,
+    "ignoreHealthyNtfs98": true
   }
 }

@@ -73,6 +73,7 @@ function Invoke-RBZScan {
         [pscustomobject]@{Name='Battery';Function='Get-RBZBatteryFindings'}
         [pscustomobject]@{Name='Startup';Function='Get-RBZStartupFindings'}
         [pscustomobject]@{Name='Updates';Function='Get-RBZUpdateFindings'}
+        [pscustomobject]@{Name='Event Logs';Function='Get-RBZEventLogFindings'}
     )
 
     $total=$modules.Count
@@ -249,10 +250,10 @@ Add-Type -AssemblyName PresentationFramework
 <ColumnDefinition Width="Auto"/>
 </Grid.ColumnDefinitions>
 
-<Border Name="LogoPlaceholder" Grid.Column="0" Width="58" Height="58" CornerRadius="8"
+<Border Name="LogoPlaceholder" Grid.Column="0" Width="150" Height="58" CornerRadius="8"
         BorderThickness="1" BorderBrush="#64748B" Background="#0F172A" Margin="0,0,14,0">
 <Grid>
-<Image Name="BrandLogo" Stretch="Uniform" Margin="6" Visibility="Collapsed"/>
+<Image Name="BrandLogo" Stretch="Uniform" Margin="4" Visibility="Collapsed"/>
 <TextBlock Name="LogoFallbackText" Text="RBZ" Foreground="White" FontWeight="Bold"
            FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
 </Grid>
@@ -600,7 +601,7 @@ $ScanButton.Add_Click({
         if($attention.Count){$AttentionGrid.SelectedIndex=0}
 
         $Progress.Value=100
-        $ScanProgressText.Text='Module 8 of 8 | 100%'
+        $ScanProgressText.Text='Module 9 of 9 | 100%'
         $ScanElapsedText.Text=((Get-Date)-$scanStarted).ToString('hh\:mm\:ss')
 
         $CustomerReportButton.IsEnabled=$true
