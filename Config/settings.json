@@ -161,5 +161,8 @@
     "wearCriticalPercent": 95,
     "uncorrectedErrorsWarning": 1,
     "powerOnHoursInfo": true
+  },
+  "devices": {
+    "staleDriverYears": 5
   }
 }

@@ -1,0 +1,29 @@
+RBZ PC Health v0.7.0 RC6
+
+REPLACE:
+- Modules\Device.psm1
+- Config\settings.json
+
+RUN:
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\RBZHealth.ps1
+
+TEST:
+1. Run Full Scan.
+2. Open the RAID Controller finding.
+3. For Code 28 confirm:
+   Summary: Drivers for this device are not installed. (Code 28)
+4. Confirm Details include device/class/status/problem meaning/manufacturer/instance ID/hardware ID.
+5. Confirm driver provider/version/date/INF/signature when installed.
+6. Code 22, 45 and 47 should be Info, not Warning.
+7. Code 14, 21 and 32 should be Recommend.
+8. Codes 10, 18, 19, 24, 28, 31, 37, 39, 41, 43, 48 and 52 remain Warning.
+9. `Older third-party drivers` is Info only and does not reduce health score.
+10. Confirm Event Log, SMART/storage, UI and Repair Centre are unchanged.
+
+
+RC6a PRESENTATION FIX:
+- Blank device Class now displays `Unassigned`.
+- Code 28 always displays:
+  Provider: Not installed
+  Version: Not installed
+- Empty Signed/Signer fields are suppressed.
