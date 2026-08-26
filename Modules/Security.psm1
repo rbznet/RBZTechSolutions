@@ -38,12 +38,81 @@
 
             try {
                 $pref = Get-MpPreference -ErrorAction Stop
-                $exclusions = @()
-                if($pref.ExclusionPath){ $exclusions += @($pref.ExclusionPath | ForEach-Object { "Path: $_" }) }
-                if($pref.ExclusionProcess){ $exclusions += @($pref.ExclusionProcess | ForEach-Object { "Process: $_" }) }
-                if($pref.ExclusionExtension){ $exclusions += @($pref.ExclusionExtension | ForEach-Object { "Extension: $_" }) }
-                if($pref.ExclusionIpAddress){ $exclusions += @($pref.ExclusionIpAddress | ForEach-Object { "IP: $_" }) }
-                $count = $exclusions.Count
+
+                # RBZ080RC4A_NORMALISE_DEFENDER_EXCLUSIONS
+                # Some Defender/PowerShell combinations can return several exclusion
+                # paths inside one string. Normalise them so the count and report
+                # presentation reflect the actual individual entries.
+                function Expand-RBZDefenderExclusionValue {
+                    param(
+                        [AllowNull()]$Value,
+                        [ValidateSet('Path','Process','Extension','IP')][string]$Type
+                    )
+
+                    foreach($raw in @($Value)){
+                        if($null -eq $raw){continue}
+
+                        $s=[string]$raw
+                        if([string]::IsNullOrWhiteSpace($s)){continue}
+
+                        $parts=@()
+
+                        if($Type -eq 'Path'){
+                            # First handle conventional separators.
+                            $parts=@($s -split '[;\r\n]+' | Where-Object {-not [string]::IsNullOrWhiteSpace($_)})
+
+                            # Defender can occasionally expose multiple absolute paths
+                            # concatenated without separators. Split before each new
+                            # drive-root or UNC path while retaining the root itself.
+                            $expanded=[System.Collections.Generic.List[string]]::new()
+
+                            foreach($part in $parts){
+                                $p=$part.Trim()
+
+                                $matches=[regex]::Matches(
+                                    $p,
+                                    '(?i)(?:[A-Z]:\\|\\\\)[\s\S]*?(?=(?:[A-Z]:\\|\\\\)|$)'
+                                )
+
+                                if($matches.Count -gt 1){
+                                    foreach($m in $matches){
+                                        $v=$m.Value.Trim()
+                                        if($v){$expanded.Add($v)}
+                                    }
+                                }else{
+                                    $expanded.Add($p)
+                                }
+                            }
+
+                            $parts=@($expanded)
+                        }
+                        else{
+                            $parts=@($s -split '[;\r\n]+' | Where-Object {-not [string]::IsNullOrWhiteSpace($_)})
+                        }
+
+                        foreach($part in $parts){
+                            $clean=$part.Trim()
+                            if($clean){$clean}
+                        }
+                    }
+                }
+
+                $exclusions=[System.Collections.Generic.List[string]]::new()
+
+                foreach($v in @(Expand-RBZDefenderExclusionValue -Value $pref.ExclusionPath -Type Path)){
+                    $exclusions.Add("Path: $v")
+                }
+                foreach($v in @(Expand-RBZDefenderExclusionValue -Value $pref.ExclusionProcess -Type Process)){
+                    $exclusions.Add("Process: $v")
+                }
+                foreach($v in @(Expand-RBZDefenderExclusionValue -Value $pref.ExclusionExtension -Type Extension)){
+                    $exclusions.Add("Extension: $v")
+                }
+                foreach($v in @(Expand-RBZDefenderExclusionValue -Value $pref.ExclusionIpAddress -Type IP)){
+                    $exclusions.Add("IP: $v")
+                }
+
+                $count=$exclusions.Count
                 $out.Add((New-RBZFinding -Category 'Security' -Name 'Defender exclusions' -Status $(if($count){'Info'}else{'Healthy'}) -Summary $(if($count){"$count configured Microsoft Defender exclusion(s)."}else{'No Microsoft Defender exclusions detected.'}) -Details $(if($count){$exclusions -join "`n"}else{'No path, process, extension or IP exclusions returned.'}) -Recommendation $(if($count){'Review exclusions and confirm each is required and trusted.'}else{''})))
             } catch { $out.Add((New-RBZFinding -Category 'Security' -Name 'Defender exclusions' -Status 'Info' -Summary 'Defender exclusion configuration unavailable.' -Details $_.Exception.Message)) }
         } catch { $out.Add((New-RBZFinding -Category 'Security' -Name 'Microsoft Defender' -Status 'Info' -Summary 'Defender status unavailable or a third-party antivirus may be active.' -Details $_.Exception.Message)) }
@@ -101,3 +170,4 @@
     return $out
 }
 Export-ModuleMember -Function Get-RBZSecurityFindings
+

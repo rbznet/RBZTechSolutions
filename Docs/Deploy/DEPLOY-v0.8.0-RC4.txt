@@ -1,0 +1,48 @@
+RBZ PC Health v0.8.0 RC4 - Technician Report Overhaul
+
+BASELINE:
+GitHub main @ 9774d09 (clean RC3 baseline).
+
+PRODUCT CHANGE:
+Modules\Report.psm1
+
+ADDS TO TECHNICIAN HTML/JSON REPORT:
+- Top 3 Technician Priority Actions.
+- Priority level, category, finding, reason and recommended action.
+- Action type awareness from the RC3 recommendation engine.
+- Repair Centre Opportunities section.
+- Manual Investigation section.
+- Collapsible Informational Findings section.
+- TechnicianPriorities array in the JSON report payload.
+- Existing Needs Attention, Before/After, Repair Verification, Service Actions,
+  Score Explanation and full Diagnostic Results remain intact.
+
+SAFETY:
+- Reports are advisory only.
+- No service action is selected or executed from the report.
+- Manual items remain manual.
+- Repair Centre opportunities identify existing actions only.
+
+REPO HYGIENE:
+- Installer lives under Tools, not repo root.
+- Deployment note lives under Docs\Deploy.
+- After RC4 is accepted, Tools\Apply-RC4.ps1 can be deleted before commit.
+
+INSTALL:
+1. Extract over the existing repo.
+2. Run:
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Apply-RC4.ps1
+3. Launch:
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\RBZHealth.ps1
+4. Run Full Scan.
+5. Click Technician Report.
+
+TEST:
+- Report opens successfully.
+- Technician Workflow appears after the score card.
+- Current RAID Controller and Application Crash History should appear in
+  Priority Actions and Manual Investigation.
+- BitLocker should remain a manual security item.
+- Any safe mapped finding should appear under Repair Centre Opportunities.
+- Full Diagnostic Results still appear below.
+- Customer Report should NOT contain Technician Workflow.

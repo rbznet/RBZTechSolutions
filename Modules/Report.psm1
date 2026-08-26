@@ -1,4 +1,4 @@
-function Get-RBZHealthScore {
+﻿function Get-RBZHealthScore {
     param([object[]]$Findings,$Config)
 
     $weights = $Config.scoring.categoryWeights
@@ -61,7 +61,35 @@ function ConvertTo-RBZCustomerDetails {
         $lines=@($lines | Where-Object {$_ -notmatch '^\s*(Serial|Thumbprint)(\s+number)?:\s*'})
         $text=$lines -join "`n"
     }
-    [System.Web.HttpUtility]::HtmlEncode($text) -replace "(`r`n|`n)",'<br>'
+    # RBZ080RC4B_CUSTOMER_SPACING
+    $encoded=[System.Web.HttpUtility]::HtmlEncode($text)
+    # RBZ080RC4C2_NORMALISE_CUSTOMER_DETAILS
+    if($Audience -eq 'Customer'){
+        $lines=@(
+            $text -split "(`r`n|`n|`r)" |
+            ForEach-Object {
+                if($null -ne $_){ $_.TrimEnd() }
+            } |
+            Where-Object {
+                -not [string]::IsNullOrWhiteSpace($_)
+            }
+        )
+
+        if($Config.report.hideHardwareSerialsInHtml){
+            $lines=@($lines | Where-Object {
+                $_ -notmatch '^\s*(Serial|Thumbprint)(\s+number)?:\s*'
+            })
+        }
+
+        if($lines.Count -eq 0){ return '' }
+
+        return (
+            @($lines | ForEach-Object {
+                [System.Web.HttpUtility]::HtmlEncode([string]$_)
+            }) -join '<br>'
+        )
+    }
+    $encoded -replace "(`r`n|`n)",'<br>'
 }
 
 function ConvertTo-RBZHtmlRow {
@@ -122,6 +150,11 @@ function Export-RBZReport {
         ScoreLabel=$label
         Counts=$counts
         CategoryBreakdown=$breakdown
+        TechnicianPriorities=$(if($Audience -eq 'Technician' -and (Get-Command Get-RBZPrioritizedFindings -ErrorAction SilentlyContinue)){
+            $top=3
+            try{$top=[int]$Config.priority.topTechnicianActions}catch{}
+            @(Get-RBZPrioritizedFindings -Findings $Findings -Top $top)
+        }else{@()})
         Findings=$Findings
         ServiceLog=$ServiceLog
         BaselineSnapshot=$BaselineSnapshot
@@ -207,6 +240,129 @@ function Export-RBZReport {
         $scoreSection="<div class='scoreExplain'><h2 style='margin-top:0'>Score Explanation</h2><table><thead><tr><th>Category</th><th>Worst status</th><th>Points</th><th>Deduction</th></tr></thead><tbody>$($breakdownRows -join "`n")</tbody></table></div>"
     }
 
+    # RBZ080RC4_TECHNICIAN_WORKFLOW
+    $technicianWorkflowSection=''
+
+    if($Audience -eq 'Technician' -and (Get-Command Get-RBZPrioritizedFindings -ErrorAction SilentlyContinue)){
+        $priorityTop=3
+        try{$priorityTop=[int]$Config.priority.topTechnicianActions}catch{}
+        if($priorityTop -lt 1){$priorityTop=3}
+
+        $priorityItems=@(Get-RBZPrioritizedFindings -Findings $Findings -Top $priorityTop)
+
+        $priorityRows=if($priorityItems.Count){
+            foreach($p in $priorityItems){
+                $priority=[System.Web.HttpUtility]::HtmlEncode([string]$p.Priority)
+                $category=[System.Web.HttpUtility]::HtmlEncode([string]$p.Category)
+                $name=[System.Web.HttpUtility]::HtmlEncode([string]$p.Name)
+                $summary=[System.Web.HttpUtility]::HtmlEncode([string]$p.Summary)
+                $reason=[System.Web.HttpUtility]::HtmlEncode([string]$p.Reason)
+                $actionName=[System.Web.HttpUtility]::HtmlEncode([string]$p.ActionName)
+                $actionText=[System.Web.HttpUtility]::HtmlEncode([string]$p.ActionText)
+                $repairName=if([string]$p.ActionType -eq 'Repair Centre'){
+                    "<div class='repairLink'>Repair Centre: $actionName</div>"
+                }else{
+                    "<div class='manualLink'>Manual: $actionName</div>"
+                }
+
+                "<tr><td><span class='priorityBadge priority$($p.Priority)'>$priority</span></td><td>$category</td><td><strong>$name</strong><div class='details'>$summary</div></td><td>$reason</td><td>$repairName<div class='details'>$actionText</div></td></tr>"
+            }
+        }else{
+            "<tr><td colspan='5'>No priority technician actions were identified.</td></tr>"
+        }
+
+        $manualCandidates=[System.Collections.Generic.List[object]]::new()
+        $repairCandidates=[System.Collections.Generic.List[object]]::new()
+
+        foreach($f in @($Findings | Where-Object Status -in @('Recommend','Warning','Critical'))){
+            $a=Get-RBZRecommendedAction -Finding $f
+            $row=[pscustomobject]@{Finding=$f;Action=$a}
+
+            if([string]$a.ActionType -eq 'Repair Centre'){
+                $repairCandidates.Add($row)
+            }else{
+                $manualCandidates.Add($row)
+            }
+        }
+
+        $repairRows=if($repairCandidates.Count){
+            foreach($r in @($repairCandidates)){
+                $f=$r.Finding
+                $a=$r.Action
+                $name=[System.Web.HttpUtility]::HtmlEncode([string]$f.Name)
+                $category=[System.Web.HttpUtility]::HtmlEncode([string]$f.Category)
+                $status=[System.Web.HttpUtility]::HtmlEncode([string]$f.Status)
+                $actionName=[System.Web.HttpUtility]::HtmlEncode([string]$a.ActionName)
+                $actionText=[System.Web.HttpUtility]::HtmlEncode([string]$a.ActionText)
+                "<tr><td>$category</td><td>$name</td><td>$status</td><td><strong>$actionName</strong><div class='details'>$actionText</div></td></tr>"
+            }
+        }else{
+            "<tr><td colspan='4'>No current findings map to an existing Repair Centre action.</td></tr>"
+        }
+
+        $manualRows=if($manualCandidates.Count){
+            foreach($m in @($manualCandidates)){
+                $f=$m.Finding
+                $a=$m.Action
+                $name=[System.Web.HttpUtility]::HtmlEncode([string]$f.Name)
+                $category=[System.Web.HttpUtility]::HtmlEncode([string]$f.Category)
+                $status=[System.Web.HttpUtility]::HtmlEncode([string]$f.Status)
+                $actionName=[System.Web.HttpUtility]::HtmlEncode([string]$a.ActionName)
+                $actionText=[System.Web.HttpUtility]::HtmlEncode([string]$a.ActionText)
+                "<tr><td>$category</td><td>$name</td><td>$status</td><td><strong>$actionName</strong><div class='details'>$actionText</div></td></tr>"
+            }
+        }else{
+            "<tr><td colspan='4'>No manual investigation items were identified.</td></tr>"
+        }
+
+        $infoItems=@($Findings | Where-Object Status -eq 'Info')
+        $infoRows=if($infoItems.Count){
+            foreach($f in $infoItems){
+                $category=[System.Web.HttpUtility]::HtmlEncode([string]$f.Category)
+                $name=[System.Web.HttpUtility]::HtmlEncode([string]$f.Name)
+                $summary=[System.Web.HttpUtility]::HtmlEncode([string]$f.Summary)
+                "<tr><td>$category</td><td>$name</td><td>$summary</td></tr>"
+            }
+        }else{
+            "<tr><td colspan='3'>No informational findings were returned.</td></tr>"
+        }
+
+        $technicianWorkflowSection=@"
+<section class='techWorkflow'>
+<h2>Technician Workflow</h2>
+<div class='workflowIntro'>Priorities are ranked from the diagnostic evidence. They do not alter the original finding status or the health score.</div>
+
+<h3>Priority Actions</h3>
+<table class='priorityTable'>
+<thead><tr><th>Priority</th><th>Category</th><th>Finding</th><th>Why this priority</th><th>Recommended action</th></tr></thead>
+<tbody>$($priorityRows -join "`n")</tbody>
+</table>
+
+<h3>Repair Centre Opportunities</h3>
+<div class='workflowNote'>These findings map to an existing technician-approved Repair Centre action. RBZ PC Health still requires the technician to select and confirm the action in the application.</div>
+<table>
+<thead><tr><th>Category</th><th>Finding</th><th>Status</th><th>Repair Centre action</th></tr></thead>
+<tbody>$($repairRows -join "`n")</tbody>
+</table>
+
+<h3>Manual Investigation</h3>
+<div class='workflowNote'>These items intentionally remain manual because there is no sufficiently safe generic automated repair.</div>
+<table>
+<thead><tr><th>Category</th><th>Finding</th><th>Status</th><th>Technician action</th></tr></thead>
+<tbody>$($manualRows -join "`n")</tbody>
+</table>
+
+<details class='infoSection'>
+<summary>Informational Findings ($($infoItems.Count))</summary>
+<table>
+<thead><tr><th>Category</th><th>Check</th><th>Summary</th></tr></thead>
+<tbody>$($infoRows -join "`n")</tbody>
+</table>
+</details>
+</section>
+"@
+    }
+
     $customerDisplay=if([string]::IsNullOrWhiteSpace($Customer)){'Not supplied'}else{[System.Web.HttpUtility]::HtmlEncode($Customer)}
     $jobDisplay=if([string]::IsNullOrWhiteSpace($JobReference)){'Not supplied'}else{[System.Web.HttpUtility]::HtmlEncode($JobReference)}
     $brandAccent=[string]$Config.branding.accent
@@ -225,9 +381,31 @@ h2{margin-top:32px}table{border-collapse:collapse;width:100%;font-size:13px;marg
 .badge{padding:3px 8px;border-radius:999px;font-weight:600;font-size:12px}.healthy{background:#dcfce7}.info{background:#e0f2fe}.recommend{background:#fef3c7}.warning{background:#fed7aa}.critical{background:#fee2e2}
 .details{color:#6b7280;font-size:12px;margin-top:5px}.attentionBox{border:1px solid #fed7aa;background:#fffaf5;border-radius:10px;padding:16px}.scoreExplain{border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin-top:20px}
 .compareCards{display:flex;gap:14px;align-items:center;margin:14px 0}.compareCard{padding:14px 18px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:9px;min-width:120px}.compareLabel{font-size:11px;color:#6b7280;text-transform:uppercase}.compareScore{font-size:27px;font-weight:800;margin-top:3px}.compareArrow{font-size:24px;color:#6b7280}.deltaGood{color:#15803d}.deltaBad{color:#b91c1c}.deltaNeutral{color:#374151}
+.techWorkflow{margin:26px 0;padding:18px;border:1px solid #dbeafe;background:#f8fbff;border-radius:10px}
+.techWorkflow h2{margin-top:0}.techWorkflow h3{margin:24px 0 8px}
+.workflowIntro,.workflowNote{color:#4b5563;font-size:13px;margin:5px 0 12px}
+.priorityBadge{display:inline-block;padding:4px 9px;border-radius:999px;font-size:11px;font-weight:700}
+.priorityUrgent{background:#fee2e2;color:#991b1b}.priorityHigh{background:#ffedd5;color:#9a3412}.priorityMedium{background:#fef3c7;color:#854d0e}.priorityInformational{background:#e0f2fe;color:#075985}
+.repairLink{font-weight:700;color:#1d4ed8}.manualLink{font-weight:700;color:#374151}
+.infoSection{margin-top:22px;border:1px solid #e5e7eb;border-radius:8px;padding:10px 14px;background:#fff}
+.infoSection summary{cursor:pointer;font-weight:700}
+/* RBZ080RC4B_CUSTOMER_SPACING */
+.customerReport .wrap{padding:26px 32px}
+.customerReport .job{margin-bottom:18px}
+.customerReport .scorecard{margin:18px 0 24px;padding:20px}
+.customerReport h2{margin-top:26px;margin-bottom:12px}
+.customerReport table{margin-bottom:16px}
+.customerReport th,.customerReport td{padding:9px 10px;line-height:1.35}
+.customerReport .attentionBox{padding:14px}
+.customerReport .details{display:block;white-space:normal;line-height:1.35;margin-top:5px;margin-bottom:0}
+.customerReport .details:empty{display:none}
+.customerReport .badge{line-height:1.2}
+.customerReport .compareCards{margin:12px 0}
+.customerReport .scoreExplain{margin-top:18px}
+.customerReport footer{margin-top:28px}
 footer{margin-top:34px;padding-top:16px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:12px}
 @media print{body{background:#fff}.wrap{box-shadow:none;margin:0;max-width:none}.top{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
-</style></head><body>
+</style></head><body class='$(if($Audience -eq "Customer"){"customerReport"}else{"technicianReport"})'>
 <div class='top'><h1>$($Config.app.company)</h1><div class='sub'>$($Config.app.name) | $Audience Report | v$($Config.app.version)</div></div>
 <div class='wrap'>
 <div class='job'>
@@ -237,6 +415,7 @@ footer{margin-top:34px;padding-top:16px;border-top:1px solid #e5e7eb;color:#6b72
 <div class='jobbox'><div class='joblabel'>Scan ID</div><div class='jobvalue'>$scanId</div></div>
 </div>
 <div class='scorecard'><div class='score'>$score/100</div><div><div class='label'>$label</div><div class='counts'>Healthy $($counts.Healthy) | Recommend $($counts.Recommend) | Warning $($counts.Warning) | Critical $($counts.Critical)</div></div></div>
+$technicianWorkflowSection
 <h2>Needs Attention</h2><div class='attentionBox'><table><thead><tr><th>Category</th><th>Check</th><th>Status</th><th>Finding</th><th>Recommendation</th></tr></thead><tbody>$attentionRows</tbody></table></div>
 $comparisonSection
 $verificationSection
@@ -253,3 +432,6 @@ $($groupSections -join "`n")
 }
 
 Export-ModuleMember -Function Get-RBZHealthScore,Get-RBZScoreLabel,Get-RBZCategoryBreakdown,Export-RBZReport
+
+
+
