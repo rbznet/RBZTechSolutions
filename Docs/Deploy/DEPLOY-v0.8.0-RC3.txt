@@ -1,0 +1,50 @@
+RBZ PC Health v0.8.0 RC3 - Smarter Recommended Actions
+
+CUMULATIVE:
+Includes RC1 priority engine and RC2 Technician Priorities UI.
+
+RC3 ADDS:
+- Finding-to-action mapping.
+- Action Type column: Repair Centre or Manual.
+- Specific recommended action name/text in priority detail.
+- Guidance explaining why an action is automatic/manual.
+- Open Repair Centre button where a tested action already exists.
+- Repair Centre navigation highlights the matching action only.
+- It DOES NOT tick the Run checkbox.
+- It DOES NOT execute actions.
+- Existing confirmation/restore-point workflow remains intact.
+
+MAPPINGS:
+- Defender signatures -> DefenderSignatureUpdate
+- Defender investigation -> DefenderQuickScan
+- filesystem/storage scan -> CheckDiskScan
+- component store -> DismScanHealth / DismRestoreHealth
+- system files -> SfcVerifyOnly / SfcScannow
+- Windows Time -> WindowsTimeResync
+- low disk/temp pressure -> TempCleanup
+
+MANUAL BY DESIGN:
+- missing device drivers / Code 28
+- application crashes/hangs
+- Windows Update install/repair
+- general network problems
+
+INSTALL:
+1. Extract over the existing repo.
+2. Run:
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Apply-RC3.ps1
+3. Launch:
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\RBZHealth.ps1
+4. Run Full Scan.
+
+TEST CURRENT PC:
+- RAID Controller Code 28 should show Manual / Identify and install manufacturer driver.
+- Application crash history should show Manual / Investigate recurring application failures.
+- Any mapped safe finding should enable Open Repair Centre.
+- Clicking Open Repair Centre must highlight a row but MUST NOT tick its Run checkbox.
+- Score and original finding statuses remain unchanged.
+
+
+RC3a FIX:
+- Replaced brittle exact-text patching of Show-RBZPriorityDetail with regex/fallback function-body patching.
+- Handles CRLF/LF and whitespace differences from previously-applied RC2 builds.

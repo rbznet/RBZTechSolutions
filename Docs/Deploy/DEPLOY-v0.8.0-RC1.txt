@@ -1,0 +1,16 @@
+RBZ PC Health v0.8.0 RC1 - Diagnostic Priority Engine
+
+Baseline: committed/released v0.7.0.
+
+Adds a conservative priority engine without changing existing finding Status
+or the health-score calculation.
+
+Install:
+1. Extract this overlay into the existing RBZ-PC-Health repo.
+2. Run:
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Apply-RC1.ps1
+3. Run:
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\RBZHealth.ps1
+
+RC1 adds the engine only. RC2 will expose Top Issues / Recommended Actions in
+the technician workflow.

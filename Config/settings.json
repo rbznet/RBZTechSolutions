@@ -1,192 +1,197 @@
-{
-  "app": {
-    "name": "RBZ PC Health",
-    "version": "0.7.0",
-    "company": "RBZ Tech Solutions Ltd",
-    "productSubtitle": "Technician Diagnostic & Service Suite",
-    "reportPrefix": "RBZ-PC-Health",
-    "requireAdmin": true,
-    "minimumPowerShellMajor": 5,
-    "requiredPSEdition": "Desktop",
-    "requiredPowerShellMajor": 5
-  },
-  "branding": {
-    "accent": "#111827",
-    "accentText": "#FFFFFF",
-    "surface": "#FFFFFF",
-    "background": "#F3F4F6",
-    "logoPath": ".\\Assets\\rbz-logo.png",
-    "website": "rbztechsolutions.com",
-    "supportEmail": "info@rbztechsolutions.com"
-  },
-  "paths": {
-    "reports": ".\\Reports",
-    "assets": ".\\Assets",
-    "modules": ".\\Modules",
-    "logo": ".\\Assets\\rbz-logo.png"
-  },
-  "github": {
-    "owner": "rbznet",
-    "repo": "RBZTechSolutions",
-    "branch": "main",
-    "releaseApi": "https://api.github.com/repos/rbznet/RBZTechSolutions/releases/latest",
-    "rawBase": "https://raw.githubusercontent.com/rbznet/RBZTechSolutions/main"
-  },
-  "bootstrap": {
-    "tempRoot": "%TEMP%\\RBZ-PC-Health",
-    "packageAssetPattern": "RBZ-PC-Health-*.zip",
-    "hashAssetPattern": "RBZ-PC-Health-*.sha256",
-    "entryPoint": "RBZHealth.ps1",
-    "cleanupAfterExit": false
-  },
-  "scan": {
-    "batteryReport": true,
-    "defender": true,
-    "windowsUpdateService": true,
-    "startupItems": true,
-    "networkTests": true,
-    "storageHealth": true,
-    "eventLogSummary": true,
-    "installedSoftware": true,
-    "secureBoot": true,
-    "tpm": true,
-    "bitLocker": true,
-    "pendingUpdates": true,
-    "windowsTime": true
-  },
-  "network": {
-    "connectivityHost": "www.microsoft.com",
-    "connectivityPort": 443,
-    "httpConnectivityUrl": "http://www.msftconnecttest.com/connecttest.txt",
-    "httpExpectedContent": "Microsoft Connect Test",
-    "httpsTestHost": "www.microsoft.com",
-    "httpsTestPort": 443,
-    "dnsTestName": "www.microsoft.com",
-    "timeoutSeconds": 8,
-    "gatewayPingCount": 4,
-    "gatewayLatencyWarningMs": 50,
-    "gatewayPacketLossWarningPercent": 25,
-    "dnsLatencyWarningMs": 1000
-  },
-  "thresholds": {
-    "systemDriveFreePercentWarning": 20,
-    "systemDriveFreePercentCritical": 10,
-    "memoryGBWarning": 8,
-    "batteryHealthWarningPercent": 70,
-    "uptimeDaysWarning": 14,
-    "defenderSignatureAgeWarningDays": 3,
-    "startupCountRecommend": 20,
-    "failedUpdateEventsWarning": 3
-  },
-  "report": {
-    "hideHardwareSerialsInHtml": true,
-    "showInfoFindings": true,
-    "defaultAudience": "Customer"
-  },
-  "session": {
-    "autoSetFirstScanAsBaseline": true,
-    "maxInMemoryScans": 10,
-    "includeComparisonInReports": true
-  },
-  "remediation": {
-    "enabled": true,
-    "allowTempCleanup": true,
-    "allowDefenderQuickScan": true,
-    "allowDefenderSignatureUpdate": true,
-    "allowDismScanHealth": true,
-    "allowDismRestoreHealth": true,
-    "allowSfcVerifyOnly": true,
-    "allowSfcScannow": true,
-    "allowCheckDiskScan": true,
-    "allowWindowsTimeResync": true,
-    "allowRestorePoint": true,
-    "attemptRestorePointBeforeMediumActions": true,
-    "blockMediumActionIfRestorePointFails": false,
-    "restorePointDescription": "RBZ PC Health pre-repair",
-    "maxActionLogEntries": 100,
-    "progressPollMilliseconds": 400,
-    "showElapsedTime": true,
-    "verifyDismAfterRestoreHealth": true,
-    "includeRepairVerificationInComparison": true,
-    "includeRepairVerificationInReports": true,
-    "systemProtectionAllocationPercent": 5,
-    "promptWhenSystemProtectionDisabled": true,
-    "verifyRestorePointAfterCreate": true,
-    "allowEnableSystemProtection": true,
-    "restorePointUseCleanPowerShell": false
-  },
-  "scoring": {
-    "categoryWeights": {
-      "System": 15,
-      "Storage": 15,
-      "Security": 25,
-      "Network": 10,
-      "Devices": 10,
-      "Battery": 5,
-      "Startup": 5,
-      "Updates": 15
-    },
-    "statusFactors": {
-      "Healthy": 1.0,
-      "Info": 1.0,
-      "Recommend": 0.9,
-      "Warning": 0.7,
-      "Critical": 0.25
-    }
-  },
-  "scanProgress": {
-    "enabled": true,
-    "showElapsedTime": true,
-    "showCompletedModules": true
-  },
-  "ui": {
-    "defaultTheme": "Light",
-    "rememberTheme": true,
-    "themeStateFile": "%LOCALAPPDATA%\\RBZ PC Health\\ui.json",
-    "logoPath": ".\\Assets\\rbz-logo.png"
-  },
-  "eventLog": {
-    "lookbackDays": 7,
-    "minidumpLookbackDays": 30,
-    "unexpectedShutdownWarningCount": 2,
-    "applicationCrashRecommendCount": 3,
-    "applicationCrashWarningCount": 10,
-    "maxEventsInDetails": 8,
-    "applicationPerAppRecommendCount": 3,
-    "applicationPerAppWarningCount": 5,
-    "applicationTotalRecommendCount": 10,
-    "ignoreHealthyNtfs98": true
-  },
-  "storage": {
-    "reliabilityCounters": true,
-    "temperatureWarningC": 60,
-    "temperatureCriticalC": 75,
-    "wearWarningPercent": 80,
-    "wearCriticalPercent": 95,
-    "uncorrectedErrorsWarning": 1,
-    "powerOnHoursInfo": true
-  },
-  "devices": {
-    "staleDriverYears": 5
-  },
-  "services": {
-    "enabled": true,
-    "reportMissingAsInfo": false,
-    "reportStoppedThirdPartyAutoAsInfo": true,
-    "monitoredCoreServices": [
-      "RpcSs",
-      "DcomLaunch",
-      "EventLog",
-      "PlugPlay",
-      "Power",
-      "ProfSvc",
-      "Schedule",
-      "SamSs",
-      "Dhcp",
-      "Dnscache",
-      "BFE",
-      "MpsSvc",
-      "Winmgmt"
-    ]
-  }
+﻿{
+    "app":  {
+                "name":  "RBZ PC Health",
+                "version":  "0.8.0",
+                "company":  "RBZ Tech Solutions Ltd",
+                "productSubtitle":  "Technician Diagnostic \u0026 Service Suite",
+                "reportPrefix":  "RBZ-PC-Health",
+                "requireAdmin":  true,
+                "minimumPowerShellMajor":  5,
+                "requiredPSEdition":  "Desktop",
+                "requiredPowerShellMajor":  5
+            },
+    "branding":  {
+                     "accent":  "#111827",
+                     "accentText":  "#FFFFFF",
+                     "surface":  "#FFFFFF",
+                     "background":  "#F3F4F6",
+                     "logoPath":  ".\\Assets\\rbz-logo.png",
+                     "website":  "rbztechsolutions.com",
+                     "supportEmail":  "info@rbztechsolutions.com"
+                 },
+    "paths":  {
+                  "reports":  ".\\Reports",
+                  "assets":  ".\\Assets",
+                  "modules":  ".\\Modules",
+                  "logo":  ".\\Assets\\rbz-logo.png"
+              },
+    "github":  {
+                   "owner":  "rbznet",
+                   "repo":  "RBZTechSolutions",
+                   "branch":  "main",
+                   "releaseApi":  "https://api.github.com/repos/rbznet/RBZTechSolutions/releases/latest",
+                   "rawBase":  "https://raw.githubusercontent.com/rbznet/RBZTechSolutions/main"
+               },
+    "bootstrap":  {
+                      "tempRoot":  "%TEMP%\\RBZ-PC-Health",
+                      "packageAssetPattern":  "RBZ-PC-Health-*.zip",
+                      "hashAssetPattern":  "RBZ-PC-Health-*.sha256",
+                      "entryPoint":  "RBZHealth.ps1",
+                      "cleanupAfterExit":  false
+                  },
+    "scan":  {
+                 "batteryReport":  true,
+                 "defender":  true,
+                 "windowsUpdateService":  true,
+                 "startupItems":  true,
+                 "networkTests":  true,
+                 "storageHealth":  true,
+                 "eventLogSummary":  true,
+                 "installedSoftware":  true,
+                 "secureBoot":  true,
+                 "tpm":  true,
+                 "bitLocker":  true,
+                 "pendingUpdates":  true,
+                 "windowsTime":  true
+             },
+    "network":  {
+                    "connectivityHost":  "www.microsoft.com",
+                    "connectivityPort":  443,
+                    "httpConnectivityUrl":  "http://www.msftconnecttest.com/connecttest.txt",
+                    "httpExpectedContent":  "Microsoft Connect Test",
+                    "httpsTestHost":  "www.microsoft.com",
+                    "httpsTestPort":  443,
+                    "dnsTestName":  "www.microsoft.com",
+                    "timeoutSeconds":  8,
+                    "gatewayPingCount":  4,
+                    "gatewayLatencyWarningMs":  50,
+                    "gatewayPacketLossWarningPercent":  25,
+                    "dnsLatencyWarningMs":  1000
+                },
+    "thresholds":  {
+                       "systemDriveFreePercentWarning":  20,
+                       "systemDriveFreePercentCritical":  10,
+                       "memoryGBWarning":  8,
+                       "batteryHealthWarningPercent":  70,
+                       "uptimeDaysWarning":  14,
+                       "defenderSignatureAgeWarningDays":  3,
+                       "startupCountRecommend":  20,
+                       "failedUpdateEventsWarning":  3
+                   },
+    "report":  {
+                   "hideHardwareSerialsInHtml":  true,
+                   "showInfoFindings":  true,
+                   "defaultAudience":  "Customer"
+               },
+    "session":  {
+                    "autoSetFirstScanAsBaseline":  true,
+                    "maxInMemoryScans":  10,
+                    "includeComparisonInReports":  true
+                },
+    "remediation":  {
+                        "enabled":  true,
+                        "allowTempCleanup":  true,
+                        "allowDefenderQuickScan":  true,
+                        "allowDefenderSignatureUpdate":  true,
+                        "allowDismScanHealth":  true,
+                        "allowDismRestoreHealth":  true,
+                        "allowSfcVerifyOnly":  true,
+                        "allowSfcScannow":  true,
+                        "allowCheckDiskScan":  true,
+                        "allowWindowsTimeResync":  true,
+                        "allowRestorePoint":  true,
+                        "attemptRestorePointBeforeMediumActions":  true,
+                        "blockMediumActionIfRestorePointFails":  false,
+                        "restorePointDescription":  "RBZ PC Health pre-repair",
+                        "maxActionLogEntries":  100,
+                        "progressPollMilliseconds":  400,
+                        "showElapsedTime":  true,
+                        "verifyDismAfterRestoreHealth":  true,
+                        "includeRepairVerificationInComparison":  true,
+                        "includeRepairVerificationInReports":  true,
+                        "systemProtectionAllocationPercent":  5,
+                        "promptWhenSystemProtectionDisabled":  true,
+                        "verifyRestorePointAfterCreate":  true,
+                        "allowEnableSystemProtection":  true,
+                        "restorePointUseCleanPowerShell":  false
+                    },
+    "scoring":  {
+                    "categoryWeights":  {
+                                            "System":  15,
+                                            "Storage":  15,
+                                            "Security":  25,
+                                            "Network":  10,
+                                            "Devices":  10,
+                                            "Battery":  5,
+                                            "Startup":  5,
+                                            "Updates":  15
+                                        },
+                    "statusFactors":  {
+                                          "Healthy":  1.0,
+                                          "Info":  1.0,
+                                          "Recommend":  0.9,
+                                          "Warning":  0.7,
+                                          "Critical":  0.25
+                                      }
+                },
+    "scanProgress":  {
+                         "enabled":  true,
+                         "showElapsedTime":  true,
+                         "showCompletedModules":  true
+                     },
+    "ui":  {
+               "defaultTheme":  "Light",
+               "rememberTheme":  true,
+               "themeStateFile":  "%LOCALAPPDATA%\\RBZ PC Health\\ui.json",
+               "logoPath":  ".\\Assets\\rbz-logo.png"
+           },
+    "eventLog":  {
+                     "lookbackDays":  7,
+                     "minidumpLookbackDays":  30,
+                     "unexpectedShutdownWarningCount":  2,
+                     "applicationCrashRecommendCount":  3,
+                     "applicationCrashWarningCount":  10,
+                     "maxEventsInDetails":  8,
+                     "applicationPerAppRecommendCount":  3,
+                     "applicationPerAppWarningCount":  5,
+                     "applicationTotalRecommendCount":  10,
+                     "ignoreHealthyNtfs98":  true
+                 },
+    "storage":  {
+                    "reliabilityCounters":  true,
+                    "temperatureWarningC":  60,
+                    "temperatureCriticalC":  75,
+                    "wearWarningPercent":  80,
+                    "wearCriticalPercent":  95,
+                    "uncorrectedErrorsWarning":  1,
+                    "powerOnHoursInfo":  true
+                },
+    "devices":  {
+                    "staleDriverYears":  5
+                },
+    "services":  {
+                     "enabled":  true,
+                     "reportMissingAsInfo":  false,
+                     "reportStoppedThirdPartyAutoAsInfo":  true,
+                     "monitoredCoreServices":  [
+                                                   "RpcSs",
+                                                   "DcomLaunch",
+                                                   "EventLog",
+                                                   "PlugPlay",
+                                                   "Power",
+                                                   "ProfSvc",
+                                                   "Schedule",
+                                                   "SamSs",
+                                                   "Dhcp",
+                                                   "Dnscache",
+                                                   "BFE",
+                                                   "MpsSvc",
+                                                   "Winmgmt"
+                                               ]
+                 },
+    "priority":  {
+                     "enabled":  true,
+                     "topTechnicianActions":  3,
+                     "includeInfoInPriorityList":  false
+                 }
 }

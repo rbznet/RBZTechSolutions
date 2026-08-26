@@ -1,4 +1,4 @@
-﻿#requires -Version 5.1
+#requires -Version 5.1
 [CmdletBinding()]
 param([string]$ConfigPath,[string]$Customer,[switch]$NoGui)
 
@@ -296,8 +296,7 @@ Add-Type -AssemblyName PresentationFramework
 <Border Grid.Row="3" Name="ContentBorder" Margin="18,0,18,0" Background="White" Padding="10" CornerRadius="8"><TabControl Name="MainTabs">
 <TabItem Header="Attention"><Grid Margin="8"><Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
 <DataGrid Name="AttentionGrid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.CanContentScroll="True"><DataGrid.Columns>
-<DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="90"/><DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="105"/><DataGridTextColumn Header="Check" Binding="{Binding Name}" Width="210"/><DataGridTextColumn Header="Action" Binding="{Binding ActionType}" Width="105"/>
-<DataGridTextColumn Header="Summary" Binding="{Binding Summary}" Width="*"/>
+<DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="90"/><DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="105"/><DataGridTextColumn Header="Check" Binding="{Binding Name}" Width="210"/><DataGridTextColumn Header="Summary" Binding="{Binding Summary}" Width="*"/>
 </DataGrid.Columns></DataGrid>
 <Border Grid.Column="1" Name="DetailBorder" Margin="12,0,0,0" Background="#F9FAFB" Padding="14" BorderBrush="#E5E7EB" BorderThickness="1"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>
 <TextBlock Name="DetailTitle" Text="Select a finding" FontSize="18" FontWeight="Bold" TextWrapping="Wrap"/><TextBlock Name="DetailStatus" Margin="0,5,0,12" Foreground="#6B7280"/>
@@ -307,53 +306,8 @@ Add-Type -AssemblyName PresentationFramework
 <Button Name="CopyDetailsButton" Content="Copy Details" Width="110" Height="30" HorizontalAlignment="Left"/>
 </StackPanel></ScrollViewer></Border></Grid></TabItem>
 
-<!-- RBZ080RC2_PRIORITY_UI -->
-<TabItem Header="Technician Priorities"><Grid Margin="8">
-<Grid.ColumnDefinitions><ColumnDefinition Width="3*"/><ColumnDefinition Width="2*"/></Grid.ColumnDefinitions>
-<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-
-<Border Grid.ColumnSpan="2" Background="{DynamicResource RBZ.PanelAlt}" BorderBrush="{DynamicResource RBZ.Border}" BorderThickness="1" Padding="12" Margin="0,0,0,10">
-<StackPanel>
-<TextBlock Text="Top Technician Actions" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource RBZ.Text}"/>
-<TextBlock Text="Ranked from existing diagnostics. Priority does not change the underlying finding status or health score." Margin="0,4,0,0" Foreground="{DynamicResource RBZ.Text}" TextWrapping="Wrap"/>
-</StackPanel>
-</Border>
-
-<DataGrid Grid.Row="1" Name="PriorityGrid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
-          ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Auto">
-<DataGrid.Columns>
-<DataGridTextColumn Header="Priority" Binding="{Binding Priority}" Width="90"/>
-<DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="90"/>
-<DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="100"/>
-<DataGridTextColumn Header="Check" Binding="{Binding Name}" Width="210"/>
-<DataGridTextColumn Header="Action" Binding="{Binding ActionType}" Width="105"/>
-<DataGridTextColumn Header="Summary" Binding="{Binding Summary}" Width="*"/>
-</DataGrid.Columns>
-</DataGrid>
-
-<Border Grid.Row="1" Grid.Column="1" Margin="12,0,0,0" Background="{DynamicResource RBZ.PanelAlt}"
-        BorderBrush="{DynamicResource RBZ.Border}" BorderThickness="1" Padding="14">
-<ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>
-<TextBlock Name="PriorityDetailTitle" Text="Run a scan to generate priorities" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource RBZ.Text}" TextWrapping="Wrap"/>
-<TextBlock Name="PriorityDetailStatus" Margin="0,5,0,12" Foreground="{DynamicResource RBZ.Text}"/>
-<TextBlock Text="SUMMARY" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource RBZ.Text}"/>
-<TextBlock Name="PriorityDetailSummary" Margin="0,4,0,14" Foreground="{DynamicResource RBZ.Text}" TextWrapping="Wrap"/>
-<TextBlock Text="WHY THIS PRIORITY" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource RBZ.Text}"/>
-<TextBlock Name="PriorityDetailReason" Margin="0,4,0,14" Foreground="{DynamicResource RBZ.Text}" TextWrapping="Wrap"/>
-<!-- RBZ080RC3_ACTION_MAPPING -->
-<TextBlock Text="RECOMMENDED ACTION" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource RBZ.Text}"/>
-<TextBlock Name="PriorityDetailAction" Margin="0,4,0,8" Foreground="{DynamicResource RBZ.Text}" TextWrapping="Wrap"/>
-<TextBlock Name="PriorityDetailGuidance" Margin="0,0,0,14" Foreground="{DynamicResource RBZ.Text}" TextWrapping="Wrap"/>
-<StackPanel Orientation="Horizontal">
-<Button Name="OpenPriorityFindingButton" Content="Open Finding" Width="110" Height="30" HorizontalAlignment="Left" IsEnabled="False"/>
-<Button Name="OpenPriorityRepairButton" Content="Open Repair Centre" Width="140" Height="30" Margin="8,0,0,0" HorizontalAlignment="Left" IsEnabled="False"/>
-</StackPanel>
-</StackPanel></ScrollViewer>
-</Border>
-</Grid></TabItem>
 <TabItem Header="All Results"><DataGrid Name="ResultsGrid" Margin="8" AutoGenerateColumns="False" IsReadOnly="True" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.CanContentScroll="True"><DataGrid.Columns>
-<DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="110"/><DataGridTextColumn Header="Check" Binding="{Binding Name}" Width="235"/><DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="95"/><DataGridTextColumn Header="Action" Binding="{Binding ActionType}" Width="105"/>
-<DataGridTextColumn Header="Summary" Binding="{Binding Summary}" Width="*"/><DataGridTextColumn Header="Recommendation" Binding="{Binding Recommendation}" Width="280"/>
+<DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="110"/><DataGridTextColumn Header="Check" Binding="{Binding Name}" Width="235"/><DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="95"/><DataGridTextColumn Header="Summary" Binding="{Binding Summary}" Width="*"/><DataGridTextColumn Header="Recommendation" Binding="{Binding Recommendation}" Width="280"/>
 </DataGrid.Columns></DataGrid></TabItem>
 
 <TabItem Header="Before / After"><Grid Margin="10">
@@ -435,7 +389,7 @@ FontSize="12"/>
 
 $reader=New-Object System.Xml.XmlNodeReader $xaml
 $window=[Windows.Markup.XamlReader]::Load($reader)
-foreach($name in @('CustomerBox','JobBox','ScanButton','CustomerReportButton','TechnicianReportButton','OpenReportsButton','ResultsGrid','AttentionGrid','PriorityGrid','PriorityDetailTitle','PriorityDetailStatus','PriorityDetailSummary','PriorityDetailReason','PriorityDetailAction','PriorityDetailGuidance','OpenPriorityFindingButton','OpenPriorityRepairButton','ScoreText','ScoreLabel','StatusText','Progress','ScanProgressText','ScanElapsedText','DeviceText','VersionText','HealthyCount','InfoCount','RecommendCount','WarningCount','CriticalCount','TotalCount','DetailTitle','DetailStatus','DetailSummary','DetailBody','DetailRecommendation','CopyDetailsButton','ActionGrid','RunActionsButton','ActionStatusText','ActionLogBox','ActionProgressBar','ActionProgressText','ActionElapsedText','BaselineScoreText','CurrentScoreText','ScoreChangeText','ScanCountText','ComparisonSummaryText','ComparisonGrid','SetBaselineButton','ClearHistoryButton','HeaderBorder','JobPanelBorder','StatsBorder','ContentBorder','MainTabs','DetailBorder','ComparisonHeaderBorder','LogoPlaceholder','BrandLogo','LogoFallbackText','ThemeButton','CustomerLabel','JobLabel')){Set-Variable -Name $name -Value $window.FindName($name)}
+foreach($name in @('CustomerBox','JobBox','ScanButton','CustomerReportButton','TechnicianReportButton','OpenReportsButton','ResultsGrid','AttentionGrid','ScoreText','ScoreLabel','StatusText','Progress','ScanProgressText','ScanElapsedText','DeviceText','VersionText','HealthyCount','InfoCount','RecommendCount','WarningCount','CriticalCount','TotalCount','DetailTitle','DetailStatus','DetailSummary','DetailBody','DetailRecommendation','CopyDetailsButton','ActionGrid','RunActionsButton','ActionStatusText','ActionLogBox','ActionProgressBar','ActionProgressText','ActionElapsedText','BaselineScoreText','CurrentScoreText','ScoreChangeText','ScanCountText','ComparisonSummaryText','ComparisonGrid','SetBaselineButton','ClearHistoryButton','HeaderBorder','JobPanelBorder','StatsBorder','ContentBorder','MainTabs','DetailBorder','ComparisonHeaderBorder','LogoPlaceholder','BrandLogo','LogoFallbackText','ThemeButton','CustomerLabel','JobLabel')){Set-Variable -Name $name -Value $window.FindName($name)}
 
 if($Customer){$CustomerBox.Text=$Customer}
 $VersionText.Text="$($Config.app.productSubtitle) | v$($Config.app.version)"
@@ -553,76 +507,6 @@ function Show-RBZDetail($Finding){
     $DetailRecommendation.Text=if([string]::IsNullOrWhiteSpace([string]$Finding.Recommendation)){'No action required.'}else{$Finding.Recommendation}
 }
 $AttentionGrid.Add_SelectionChanged({if($AttentionGrid.SelectedItem){Show-RBZDetail $AttentionGrid.SelectedItem}})
-
-function Show-RBZPriorityDetail($Item){
-    if($null -eq $Item){return}
-    $PriorityDetailTitle.Text=$Item.Name
-    $PriorityDetailStatus.Text="$($Item.Priority) priority | $($Item.Category) | $($Item.Status)"
-    $PriorityDetailSummary.Text=$Item.Summary
-    $PriorityDetailReason.Text=$Item.Reason
-    $PriorityDetailAction.Text="$($Item.ActionName)`n$($Item.ActionText)"
-    $PriorityDetailGuidance.Text=$Item.Guidance
-    $OpenPriorityFindingButton.IsEnabled=$true
-    $OpenPriorityRepairButton.IsEnabled=[bool]$Item.CanOpenRepairCentre
-}
-
-function Open-RBZPriorityFinding {
-    $item=$PriorityGrid.SelectedItem
-    if($null -eq $item -or $null -eq $item.Finding){return}
-
-    $target=$item.Finding
-    $attentionItems=@($AttentionGrid.ItemsSource)
-
-    $match=$attentionItems | Where-Object {
-        $_.Category -eq $target.Category -and $_.Name -eq $target.Name -and $_.Status -eq $target.Status
-    } | Select-Object -First 1
-
-    if($match){
-        $AttentionGrid.SelectedItem=$match
-        $AttentionGrid.ScrollIntoView($match)
-        $MainTabs.SelectedIndex=0
-        Show-RBZDetail $match
-    } else {
-        $resultsItems=@($ResultsGrid.ItemsSource)
-        $result=$resultsItems | Where-Object {
-            $_.Category -eq $target.Category -and $_.Name -eq $target.Name -and $_.Status -eq $target.Status
-        } | Select-Object -First 1
-
-        if($result){
-            $ResultsGrid.SelectedItem=$result
-            $ResultsGrid.ScrollIntoView($result)
-            $MainTabs.SelectedIndex=2
-        }
-    }
-}
-
-$PriorityGrid.Add_SelectionChanged({
-    if($PriorityGrid.SelectedItem){Show-RBZPriorityDetail $PriorityGrid.SelectedItem}
-})
-$PriorityGrid.Add_MouseDoubleClick({Open-RBZPriorityFinding})
-$OpenPriorityFindingButton.Add_Click({Open-RBZPriorityFinding})
-
-function Open-RBZPriorityRepairAction {
-    $item=$PriorityGrid.SelectedItem
-    if($null -eq $item -or -not [bool]$item.CanOpenRepairCentre -or [string]::IsNullOrWhiteSpace([string]$item.ActionId)){return}
-
-    $match=@($script:Actions | Where-Object Id -eq $item.ActionId | Select-Object -First 1)
-    if($match.Count -eq 0){
-        [System.Windows.MessageBox]::Show(
-            "The recommended Repair Centre action '$($item.ActionName)' is not available in this configuration.",
-            'RBZ PC Health'
-        )|Out-Null
-        return
-    }
-
-    # Attention=0, Technician Priorities=1, All Results=2,
-    # Before/After=3, Repair Centre=4.
-    $MainTabs.SelectedIndex=4
-    $ActionGrid.SelectedItem=$match[0]
-    $ActionGrid.ScrollIntoView($match[0])
-    $ActionStatusText.Text="Recommended action highlighted: $($match[0].Name). Review it before selecting Run."
-}
-$OpenPriorityRepairButton.Add_Click({Open-RBZPriorityRepairAction})
 $CopyDetailsButton.Add_Click({if($AttentionGrid.SelectedItem){$f=$AttentionGrid.SelectedItem;[Windows.Clipboard]::SetText("Status: $($f.Status)`r`nCategory: $($f.Category)`r`nCheck: $($f.Name)`r`nSummary: $($f.Summary)`r`n`r`nDetails:`r`n$($f.Details)`r`n`r`nRecommendation:`r`n$($f.Recommendation)");$StatusText.Text='Finding details copied to clipboard.'}})
 
 function Update-RBZComparisonView {
@@ -702,35 +586,6 @@ $ScanButton.Add_Click({
             Sort-Object @{Expression={$rank[$_.Status]}},Category,Name
         )
         $AttentionGrid.ItemsSource=$attention
-
-        $priorityTop=3
-        try{$priorityTop=[int]$Config.priority.topTechnicianActions}catch{}
-        if($priorityTop -lt 1){$priorityTop=3}
-
-        $includeInfo=$false
-        try{$includeInfo=[bool]$Config.priority.includeInfoInPriorityList}catch{}
-
-        if($includeInfo){
-            $priorities=@(Get-RBZPrioritizedFindings -Findings $script:Findings -Top $priorityTop -IncludeInfo)
-        } else {
-            $priorities=@(Get-RBZPrioritizedFindings -Findings $script:Findings -Top $priorityTop)
-        }
-
-        $PriorityGrid.ItemsSource=$priorities
-        $OpenPriorityFindingButton.IsEnabled=$false
-
-        if($priorities.Count -gt 0){
-            $PriorityGrid.SelectedIndex=0
-            Show-RBZPriorityDetail $PriorityGrid.SelectedItem
-        } else {
-            $PriorityDetailTitle.Text='No priority actions identified'
-            $PriorityDetailStatus.Text='Healthy'
-            $PriorityDetailSummary.Text='No Critical, Warning or Recommend findings were returned.'
-            $PriorityDetailReason.Text='There are no non-informational findings requiring technician prioritisation.'
-            $PriorityDetailAction.Text='No priority action required.'
-            $PriorityDetailGuidance.Text=''
-            $OpenPriorityRepairButton.IsEnabled=$false
-        }
 
         $score=Get-RBZHealthScore -Findings $script:Findings -Config $Config
         $ScoreText.Text="$score/100"
@@ -1030,6 +885,3 @@ $OpenReportsButton.Add_Click({
 })
 
 $window.ShowDialog()|Out-Null
-
-
-

@@ -727,7 +727,7 @@ $ScanButton.Add_Click({
             $PriorityDetailStatus.Text='Healthy'
             $PriorityDetailSummary.Text='No Critical, Warning or Recommend findings were returned.'
             $PriorityDetailReason.Text='There are no non-informational findings requiring technician prioritisation.'
-            $PriorityDetailAction.Text='No priority action required.'
+            $PriorityDetailAction$PriorityDetailAction.Text='No priority action required.'
             $PriorityDetailGuidance.Text=''
             $OpenPriorityRepairButton.IsEnabled=$false
         }
@@ -1030,6 +1030,5 @@ $OpenReportsButton.Add_Click({
 })
 
 $window.ShowDialog()|Out-Null
-
 
 

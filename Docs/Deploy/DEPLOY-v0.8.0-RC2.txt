@@ -1,0 +1,31 @@
+RBZ PC Health v0.8.0 RC2 - Technician Priority Summary
+
+RC2 is cumulative and includes the RC1 priority engine.
+
+ADDS:
+- Technician Priorities tab.
+- Top 3 ranked non-healthy findings after each Full Scan.
+- Priority / Status / Category / Check / Summary grid.
+- Explanation of why the finding has been prioritised.
+- Recommended technician action.
+- Open Finding button.
+- Double-click a priority row to jump to the original finding.
+- Original Status and health-score logic remain unchanged.
+
+INSTALL:
+1. Extract this overlay into the existing RBZ-PC-Health repo.
+2. Run:
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Apply-RC2.ps1
+3. Launch:
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\RBZHealth.ps1
+4. Run Full Scan.
+
+TEST:
+- App identifies as v0.8.0.
+- Technician Priorities tab appears.
+- Normally exactly 3 priority rows appear when 3+ actionable findings exist.
+- RAID Controller Code 28 should rank highly on the current test PC.
+- Repeated application crash history should rank highly.
+- Selecting a row updates the priority detail pane.
+- Open Finding / double-click jumps to the original diagnostic.
+- Health score and original finding statuses do not change.
