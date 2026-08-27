@@ -1,14 +1,10 @@
-﻿# RBZ PC Health RC bootstrapper
+# RBZ PC Health RC bootstrapper
 # Test channel: downloads the current GitHub main branch and launches RBZ PC Health.
 # Stable bootstrap.ps1 remains release-based.
 
-[CmdletBinding()]
-param(
-    [string]$Owner = 'rbznet',
-    [string]$Repo = 'RBZTechSolutions',
-    [string]$Branch = 'main'
-)
-
+$Owner = 'rbznet'
+$Repo = 'RBZTechSolutions'
+$Branch = 'main'
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
@@ -76,3 +72,4 @@ Write-Host "Source: $Owner/$Repo [$Branch]" -ForegroundColor DarkGray
 Write-Host "Path: $repoRoot" -ForegroundColor DarkGray
 
 & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $entry.FullName
+
