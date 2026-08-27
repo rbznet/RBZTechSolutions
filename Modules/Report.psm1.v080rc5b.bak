@@ -92,104 +92,12 @@ function ConvertTo-RBZCustomerDetails {
     $encoded -replace "(`r`n|`n)",'<br>'
 }
 
-# RBZ080RC5B_CUSTOMER_SIMPLIFICATION
-function Get-RBZCustomerFindingText {
-    param($Finding)
-
-    $name=[string]$Finding.Name
-    $category=[string]$Finding.Category
-    $status=[string]$Finding.Status
-    $text=("{0} {1} {2} {3}" -f $Finding.Name,$Finding.Summary,$Finding.Details,$Finding.Recommendation).ToLowerInvariant()
-
-    $summary=[string]$Finding.Summary
-    $recommendation=[string]$Finding.Recommendation
-
-    if($text -match 'code 28|drivers? .*not installed|missing driver'){
-        $summary='A hardware device is missing its required driver.'
-        $recommendation='Install the appropriate manufacturer driver.'
-    }
-    elseif($text -match 'application crash|application hang|crash history|faulting application|crash/hang'){
-        $summary='Several applications have stopped unexpectedly recently, including repeated failures from the same application.'
-        $recommendation='Further investigation is recommended if the crashes continue.'
-    }
-    elseif($name -match 'Secure Boot'){
-        $summary='Secure Boot is currently disabled.'
-        $recommendation='Consider enabling Secure Boot if supported by this PC.'
-    }
-    elseif($name -match 'BitLocker'){
-        $summary='Device encryption is not currently protecting the Windows system drive.'
-        $recommendation='Consider enabling device encryption and securely retaining the recovery information.'
-    }
-    elseif($category -eq 'Updates' -and $text -match 'fail'){
-        $summary='Windows Update has recorded recent update-check failures.'
-        $recommendation='Review Windows Update and retry the failed update check.'
-    }
-    elseif($category -eq 'Updates' -and $text -match 'pending'){
-        $summary='Windows updates are waiting to be installed.'
-        $recommendation='Install the available Windows updates and restart if requested.'
-    }
-    elseif($category -eq 'Storage' -and $status -in @('Warning','Critical')){
-        $summary='A storage-related issue needs further review.'
-        $recommendation='Review drive health and back up important data if the issue persists.'
-    }
-    elseif($category -eq 'Network' -and $status -in @('Warning','Critical')){
-        $summary='A network connectivity or configuration issue was detected.'
-        $recommendation='Check the network connection and configuration.'
-    }
-    elseif([string]::IsNullOrWhiteSpace($recommendation)){
-        if($status -eq 'Recommend'){
-            $recommendation='Review this recommendation with the technician.'
-        } elseif($status -in @('Warning','Critical')){
-            $recommendation='Further technician investigation is recommended.'
-        }
-    }
-
-    [pscustomobject]@{Summary=$summary;Recommendation=$recommendation}
-}
-
-function Get-RBZCustomerCategorySummary {
-    param([object[]]$Findings)
-
-    $rank=@{'Healthy'=0;'Info'=0;'Recommend'=1;'Warning'=2;'Critical'=3}
-
-    foreach($category in @('System','Storage','Security','Network','Devices','Battery','Startup','Updates')){
-        $items=@($Findings | Where-Object Category -eq $category)
-        if(-not $items.Count){ continue }
-
-        $worst=$items |
-            Sort-Object @{Expression={ if($rank.ContainsKey([string]$_.Status)){$rank[[string]$_.Status]}else{0} };Descending=$true} |
-            Select-Object -First 1
-
-        $customerStatus=switch([string]$worst.Status){
-            'Critical'  {'Attention required'}
-            'Warning'   {'Attention required'}
-            'Recommend' {'Recommendation available'}
-            default     {'Good'}
-        }
-
-        $message=switch($customerStatus){
-            'Attention required'       {'One or more checks in this area need technician attention.'}
-            'Recommendation available' {'This area is generally working, with one or more recommendations to consider.'}
-            default                    {'No customer-actionable issues were detected in this area.'}
-        }
-
-        [pscustomobject]@{Category=$category;Status=$customerStatus;Message=$message}
-    }
-}
 function ConvertTo-RBZHtmlRow {
     param($Finding,$Config,[string]$Audience='Customer')
-    $statusClass=([string]$Finding.Status).ToLowerInvariant()
-
-    if($Audience -eq 'Customer'){
-        $plain=Get-RBZCustomerFindingText -Finding $Finding
-        $rec=[System.Web.HttpUtility]::HtmlEncode([string]$plain.Recommendation)
-        $summary=[System.Web.HttpUtility]::HtmlEncode([string]$plain.Summary)
-        return "<tr><td>$($Finding.Category)</td><td>$($Finding.Name)</td><td><span class='badge $statusClass'>$($Finding.Status)</span></td><td>$summary</td><td>$rec</td></tr>"
-    }
-
     $rec=[System.Web.HttpUtility]::HtmlEncode([string]$Finding.Recommendation)
     $summary=[System.Web.HttpUtility]::HtmlEncode([string]$Finding.Summary)
     $details=ConvertTo-RBZCustomerDetails -Details ([string]$Finding.Details) -Config $Config -Audience $Audience
+    $statusClass=([string]$Finding.Status).ToLowerInvariant()
     "<tr><td>$($Finding.Category)</td><td>$($Finding.Name)</td><td><span class='badge $statusClass'>$($Finding.Status)</span></td><td>$summary<div class='details'>$details</div></td><td>$rec</td></tr>"
 }
 
@@ -260,33 +168,16 @@ function Export-RBZReport {
         ($attention | ForEach-Object {ConvertTo-RBZHtmlRow $_ $Config $Audience}) -join "`n"
     }else{"<tr><td colspan='5'>No findings require attention.</td></tr>"}
 
-    $customerCategorySummary=''
-    if($Audience -eq 'Customer'){
-        $categoryRows=foreach($s in @(Get-RBZCustomerCategorySummary -Findings $Findings)){
-            $statusClass=if($s.Status -eq 'Attention required'){'warning'}elseif($s.Status -eq 'Recommendation available'){'recommend'}else{'healthy'}
-            "<tr><td><strong>$($s.Category)</strong></td><td><span class='badge $statusClass'>$($s.Status)</span></td><td>$($s.Message)</td></tr>"
+    $groupSections=foreach($category in @('System','Storage','Security','Network','Devices','Battery','Startup','Updates')){
+        $items=@($Findings | Where-Object Category -eq $category)
+        if($Audience -eq 'Customer'){
+            $items=@($items | Where-Object Status -ne 'Info')
+        } elseif(-not $Config.report.showInfoFindings){
+            $items=@($items | Where-Object Status -ne 'Info')
         }
-        $customerCategorySummary=@"
-<h2>Health Summary</h2>
-<div class='sectionLead'>A simple overview of the main areas checked on this PC.</div>
-<table class='customerSummaryTable'>
-<thead><tr><th>Area</th><th>Result</th><th>Summary</th></tr></thead>
-<tbody>$($categoryRows -join "`n")</tbody>
-</table>
-"@
-    }
-
-    $groupSections=@()
-    if($Audience -eq 'Technician'){
-        $groupSections=foreach($category in @('System','Storage','Security','Network','Devices','Battery','Startup','Updates')){
-            $items=@($Findings | Where-Object Category -eq $category)
-            if(-not $Config.report.showInfoFindings){
-                $items=@($items | Where-Object Status -ne 'Info')
-            }
-            if($items.Count){
-                $rows=($items|ForEach-Object{ConvertTo-RBZHtmlRow $_ $Config $Audience}) -join "`n"
-                "<h2>$category</h2><table><thead><tr><th>Category</th><th>Check</th><th>Status</th><th>Finding</th><th>Recommendation</th></tr></thead><tbody>$rows</tbody></table>"
-            }
+        if($items.Count){
+            $rows=($items|ForEach-Object{ConvertTo-RBZHtmlRow $_ $Config $Audience}) -join "`n"
+            "<h2>$category</h2><table><thead><tr><th>Category</th><th>Check</th><th>Status</th><th>Finding</th><th>Recommendation</th></tr></thead><tbody>$rows</tbody></table>"
         }
     }
 
@@ -595,15 +486,14 @@ h2,h3{page-break-after:avoid}
 <div class='scoreMeta'>Scan ID: $scanId<br>$Audience report</div>
 </div>
 $technicianWorkflowSection
-$customerCategorySummary
-<h2>$(if($Audience -eq 'Customer'){'Issues & Recommendations'}else{'Needs Attention'})</h2>
-<div class='sectionLead'>$(if($Audience -eq 'Customer'){'Only items that may need attention or a recommendation are shown below. Technical evidence is retained in the Technician Report.'}else{'Items below are the non-healthy findings that may require maintenance, investigation or repair.'})</div>
+<h2>Needs Attention</h2>
+<div class='sectionLead'>Items below are the non-healthy findings that may require maintenance, investigation or repair.</div>
 <div class='attentionBox'><table><thead><tr><th>Category</th><th>Check</th><th>Status</th><th>Finding</th><th>Recommendation</th></tr></thead><tbody>$attentionRows</tbody></table></div>
 $comparisonSection
 $verificationSection
 $serviceSection
 $scoreSection
-$(if($Audience -eq 'Technician'){"<h2>Diagnostic Results</h2>"}else{''})
+<h2>Diagnostic Results</h2>
 $($groupSections -join "`n")
 <footer><strong>$($Config.app.company)</strong> | $site | $email<br>
 $audienceTitle | Scan ID $scanId | Generated $generatedDisplay<br>
@@ -616,7 +506,6 @@ RBZ PC Health is a diagnostic support tool. Service actions shown in this report
 }
 
 Export-ModuleMember -Function Get-RBZHealthScore,Get-RBZScoreLabel,Get-RBZCategoryBreakdown,Export-RBZReport
-
 
 
 

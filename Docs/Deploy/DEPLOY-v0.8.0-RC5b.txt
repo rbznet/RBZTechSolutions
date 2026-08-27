@@ -1,0 +1,21 @@
+RBZ PC Health v0.8.0 RC5b - Customer Report Simplification
+
+Patch script:
+Tools\Patches\Apply-RC5b.ps1
+
+Deploy notes:
+Docs\Deploy\DEPLOY-v0.8.0-RC5b.txt
+
+Changes:
+- Customer report removes raw diagnostic Details.
+- Adds plain-English wording for common customer-facing issues.
+- Adds a category-level Health Summary.
+- Customer report only shows actionable Issues & Recommendations.
+- Removes full per-category Diagnostic Results from Customer Report.
+- Technician Report keeps full technical detail.
+- Removes the previous root-level Apply-RC5.ps1 after successful patching.
+
+Run from repo root:
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Patches\Apply-RC5b.ps1
+
+Then launch RBZHealth.ps1 as Administrator and generate both Customer and Technician reports.

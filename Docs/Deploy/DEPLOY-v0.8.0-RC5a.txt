@@ -1,0 +1,67 @@
+RBZ PC Health v0.8.0 RC5a - Repair Result Handling
+
+FIXES
+
+1. Native exit code capture
+- Refreshes the Start-Process object after WaitForExit.
+- Captures ExitCode into a concrete integer.
+- Uses 1 as a defensive failure fallback instead of returning blank/null.
+- Progress message says "Command finished" rather than implying success.
+
+2. Windows Time resynchronisation
+- Starts W32Time only when needed.
+- Does not alter a Disabled service.
+- Captures actual w32tm /resync /rediscover exit code and output.
+- Runs post-action:
+    w32tm /query /source
+    w32tm /query /status
+- Captures exit code/output for both verification queries.
+- Treats Local CMOS Clock / Free-running System Clock as unverified.
+- Treats Leap Indicator 3 as unsynchronised.
+- Reports:
+    completed and verified
+    failed with exit code
+    command completed but synchronisation not verified
+- Full technical detail is retained in Service Log.
+
+3. Repair Centre result UI
+- Running action bar = neutral blue.
+- Successful + verified = green.
+- Successful command with verification warning = amber.
+- Failed action = red.
+- Result text explicitly says:
+    Completed successfully
+    Completed with warning
+    Failed
+- 100% now means execution completed; colour/text show outcome.
+
+4. Verification button
+- "Verify Repairs - Run Full Scan" shortened to "Verify Repairs"
+  so it fits the existing button width.
+
+SAFETY
+- No action is auto-selected.
+- No repair is auto-run.
+- No verification scan is auto-run.
+- RC5 confirmation and technician workflow remain intact.
+- Candidate files are parsed before production files are replaced.
+
+INSTALL
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Apply-RC5a.ps1
+
+TEST
+1. Run Full Scan.
+2. Technician Priorities -> Windows Time synchronisation.
+3. Open Repair Centre.
+4. Confirm Windows Time action is highlighted but not selected.
+5. Tick it manually and run it.
+6. Check result:
+   - nonblank numeric exit code in log on failure
+   - actual resync output available in service details
+   - source/status verification occurs
+   - bar is green only for verified success
+   - amber/red for warning/failure
+7. Main scan button should read "Verify Repairs".
+8. Click Verify Repairs and confirm normal RC5 post-repair flow.
+
+Do not commit until accepted.

@@ -540,10 +540,6 @@ $DeviceText.Text="$env:COMPUTERNAME | $env:USERNAME"
 $script:Findings=$null
 $script:ServiceLog=[System.Collections.Generic.List[object]]::new()
 $script:ServiceVerificationRows=[System.Collections.Generic.List[object]]::new()
-# RBZ080RC5_REPAIR_WORKFLOW
-$script:RepairVerificationPending=$false
-$script:RepairContextFinding=$null
-$script:RepairContextAction=$null
 $script:Actions=@(Get-RBZServiceActions -Config $Config)
 $ActionGrid.ItemsSource=$script:Actions
 $script:ScanHistory=[System.Collections.Generic.List[object]]::new()
@@ -624,9 +620,7 @@ function Open-RBZPriorityRepairAction {
     $MainTabs.SelectedIndex=4
     $ActionGrid.SelectedItem=$match[0]
     $ActionGrid.ScrollIntoView($match[0])
-        $script:RepairContextFinding=$item
-    $script:RepairContextAction=$match[0]
-    $ActionStatusText.Text="Recommended for: $($item.Category) - $($item.Name) | Highlighted: $($match[0].Name) | Risk: $($match[0].Risk). Nothing has been selected or run. Review the description, tick Run only if appropriate, then confirm."
+    $ActionStatusText.Text="Recommended action highlighted: $($match[0].Name). Review it before selecting Run."
 }
 $OpenPriorityRepairButton.Add_Click({Open-RBZPriorityRepairAction})
 $CopyDetailsButton.Add_Click({if($AttentionGrid.SelectedItem){$f=$AttentionGrid.SelectedItem;[Windows.Clipboard]::SetText("Status: $($f.Status)`r`nCategory: $($f.Category)`r`nCheck: $($f.Name)`r`nSummary: $($f.Summary)`r`n`r`nDetails:`r`n$($f.Details)`r`n`r`nRecommendation:`r`n$($f.Recommendation)");$StatusText.Text='Finding details copied to clipboard.'}})
@@ -656,7 +650,6 @@ $ClearHistoryButton.Add_Click({$script:ScanHistory.Clear();$script:BaselineSnaps
 $ScanButton.Add_Click({
     try{
         $scanStarted=Get-Date
-        $isRepairVerification=[bool]$script:RepairVerificationPending
 
         $StatusText.Text='Scanning system...'
         $ScanProgressText.Text='Preparing scan...'
@@ -760,16 +753,7 @@ $ScanButton.Add_Click({
         $TechnicianReportButton.IsEnabled=$true
         $RunActionsButton.IsEnabled=[bool]$Config.remediation.enabled
 
-                if($isRepairVerification){
-            $script:RepairVerificationPending=$false
-            $ScanButton.Content='Run Full Scan'
-            $ActionStatusText.Text='Verification scan completed. Review Technician Priorities and Before / After to confirm the repair outcome.'
-            $StatusText.Text="Verification scan complete: $($script:Findings.Count) checks. Review Before / After and Technician Priorities."
-            $script:RepairContextFinding=$null
-            $script:RepairContextAction=$null
-        }else{
-            $StatusText.Text="Scan complete: $($script:Findings.Count) checks."
-        }
+        $StatusText.Text="Scan complete: $($script:Findings.Count) checks."
     }
     catch{
         [System.Windows.MessageBox]::Show($_.Exception.Message,'RBZ PC Health')|Out-Null
@@ -787,12 +771,8 @@ $RunActionsButton.Add_Click({
     $selected=@($script:Actions|Where-Object Selected -eq $true)
     if(-not $selected.Count){[System.Windows.MessageBox]::Show('Select at least one service action first.','RBZ PC Health')|Out-Null;return}
 
-        $names=($selected.Name -join "`n- ")
-    $contextText=''
-    if($script:RepairContextFinding){
-        $contextText="`n`nDiagnostic context:`n$($script:RepairContextFinding.Category) - $($script:RepairContextFinding.Name)`n$($script:RepairContextFinding.Summary)"
-    }
-    $confirm=[System.Windows.MessageBox]::Show("Run these selected actions?`n`n- $names$contextText`n`nOnly explicitly selected actions will run. A verification scan will still be required afterwards.",'RBZ PC Health - Confirm',[System.Windows.MessageBoxButton]::YesNo,[System.Windows.MessageBoxImage]::Question)
+    $names=($selected.Name -join "`n- ")
+    $confirm=[System.Windows.MessageBox]::Show("Run these selected actions?`n`n- $names`n`nOnly explicitly selected actions will run.",'RBZ PC Health - Confirm',[System.Windows.MessageBoxButton]::YesNo,[System.Windows.MessageBoxImage]::Question)
     if($confirm -ne [System.Windows.MessageBoxResult]::Yes){return}
 
     try{
@@ -914,7 +894,6 @@ $RunActionsButton.Add_Click({
 
             $ActionStatusText.Text="Running: $($a.Name)"
             $ActionProgressBar.Value=0
-            $ActionProgressBar.Foreground='#2563EB'
             $ActionProgressBar.IsIndeterminate=$true
             $ActionProgressText.Text='Starting...'
             $ActionElapsedText.Text='00:00:00'
@@ -977,25 +956,7 @@ $RunActionsButton.Add_Click({
 
             $ActionProgressBar.IsIndeterminate=$false
             $ActionProgressBar.Value=100
-
-            $verificationWarning=([string]$r.VerificationStatus -in @('Warning','Critical'))
-
-            if([bool]$r.Success -and -not $verificationWarning){
-                $ActionProgressBar.Foreground='#16A34A'
-                $ActionProgressText.Text="Completed successfully - $($r.Summary)"
-                $ActionStatusText.Text="Completed successfully: $($a.Name)"
-            }
-            elseif([bool]$r.Success -and $verificationWarning){
-                $ActionProgressBar.Foreground='#D97706'
-                $ActionProgressText.Text="Completed with warning - $($r.Summary)"
-                $ActionStatusText.Text="Completed with warning: $($a.Name)"
-            }
-            else{
-                $ActionProgressBar.Foreground='#DC2626'
-                $ActionProgressText.Text="Failed - $($r.Summary)"
-                $ActionStatusText.Text="Failed: $($a.Name)"
-            }
-
+            $ActionProgressText.Text=$r.Summary
             $ActionElapsedText.Text=((Get-Date)-$actionStarted).ToString('hh\:mm\:ss')
 
             $verifyText=$(if(-not [string]::IsNullOrWhiteSpace([string]$r.VerificationSummary)){"`r`nVerification: $($r.VerificationStatus) - $($r.VerificationSummary)"}else{''})
@@ -1007,10 +968,8 @@ $RunActionsButton.Add_Click({
         }
 
         $ActionGrid.Items.Refresh()
-        $script:RepairVerificationPending=$true
-        $ScanButton.Content='Verify Repairs'
-        $ActionStatusText.Text='Selected actions completed. Verification required: run a Full Scan to confirm whether the original diagnostic finding changed.'
-        $StatusText.Text='Service actions completed. Verification is pending; use Verify Repairs.'
+        $ActionStatusText.Text='Selected actions completed. Run a new scan to verify diagnostic findings.'
+        $StatusText.Text='Service actions completed. Repair verification is shown in Before / After; full re-scan still recommended.'
     }
     catch{
         [System.Windows.MessageBox]::Show($_.Exception.Message,'RBZ PC Health - Repair Centre')|Out-Null
@@ -1071,8 +1030,6 @@ $OpenReportsButton.Add_Click({
 })
 
 $window.ShowDialog()|Out-Null
-
-
 
 
 
