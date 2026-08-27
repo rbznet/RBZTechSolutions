@@ -1,0 +1,35 @@
+RBZ PC Health v0.8.0 RC6 - Technician Notes & Service Outcome
+
+Baseline: GitHub main dc48b19
+
+Patch:
+Tools\Patches\Apply-RC6.ps1
+
+Adds:
+- Service Record tab between Before / After and Repair Centre.
+- Customer Complaint / Issue Description.
+- Technician Notes.
+- Work Performed.
+- Service Outcome.
+- Further Recommendations / Customer Advice.
+- Checkbox controlling customer-safe Service Summary.
+- Technician Notes never appear in Customer Report.
+- Full Service Record appears in Technician Report.
+- Service notes are embedded in report JSON.
+- Existing diagnostics/scoring/repair logic is unchanged.
+- Repair Centre navigation is updated from tab index 4 to 5.
+- No root-level patch or backup files are created.
+
+Apply from repo root:
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Patches\Apply-RC6.ps1
+
+Test:
+1. Launch RBZHealth.ps1 as Administrator.
+2. Confirm Service Record tab appears.
+3. Fill all five fields.
+4. Run Full Scan.
+5. Customer Report: service summary appears, but Technician Notes do not.
+6. Technician Report: all five fields appear.
+7. Untick customer summary and regenerate Customer Report: Service Summary is absent.
+8. Technician Priorities > Open Repair Centre still opens Repair Centre.
+9. Health score/findings remain unchanged.

@@ -202,6 +202,7 @@ function Export-RBZReport {
         [string]$JobReference='',
         [ValidateSet('Customer','Technician')][string]$Audience='Customer',
         [object[]]$ServiceLog=@(),
+        $ServiceNotes=$null,
         $BaselineSnapshot=$null,
         $CurrentSnapshot=$null
     )
@@ -249,6 +250,7 @@ function Export-RBZReport {
         }else{@()})
         Findings=$Findings
         ServiceLog=$ServiceLog
+        ServiceNotes=$ServiceNotes
         BaselineSnapshot=$BaselineSnapshot
         CurrentSnapshot=$CurrentSnapshot
         Comparison=$(if($BaselineSnapshot -and $CurrentSnapshot){Get-RBZComparisonSummary -Baseline $BaselineSnapshot -Current $CurrentSnapshot}else{$null})
@@ -304,6 +306,31 @@ function Export-RBZReport {
         }
     }
 
+    # RBZ080RC6_SERVICE_RECORD_REPORT
+    $serviceNotesSection=''
+    if($ServiceNotes){
+        $enc={param([string]$v) if([string]::IsNullOrWhiteSpace($v)){return ''};([System.Web.HttpUtility]::HtmlEncode($v.Trim()) -replace "(`r`n|`n|`r)",'<br>')}
+        $complaint=& $enc ([string]$ServiceNotes.CustomerComplaint)
+        $techNotes=& $enc ([string]$ServiceNotes.TechnicianNotes)
+        $work=& $enc ([string]$ServiceNotes.WorkPerformed)
+        $outcome=& $enc ([string]$ServiceNotes.ServiceOutcome)
+        $further=& $enc ([string]$ServiceNotes.FurtherRecommendations)
+        $blocks=[System.Collections.Generic.List[string]]::new()
+        if($Audience -eq 'Technician'){
+            if($complaint){$blocks.Add("<div class='serviceNote'><h3>Customer Complaint / Issue</h3><div>$complaint</div></div>")}
+            if($techNotes){$blocks.Add("<div class='serviceNote'><h3>Technician Notes</h3><div>$techNotes</div></div>")}
+            if($work){$blocks.Add("<div class='serviceNote'><h3>Work Performed</h3><div>$work</div></div>")}
+            if($outcome){$blocks.Add("<div class='serviceNote'><h3>Service Outcome</h3><div>$outcome</div></div>")}
+            if($further){$blocks.Add("<div class='serviceNote'><h3>Further Recommendations</h3><div>$further</div></div>")}
+            if($blocks.Count){$serviceNotesSection="<h2>Service Record</h2><div class='serviceRecord'>$($blocks -join '')</div>"}
+        }elseif([bool]$ServiceNotes.IncludeInCustomerReport){
+            if($complaint){$blocks.Add("<div class='serviceNote'><h3>Reason for Service</h3><div>$complaint</div></div>")}
+            if($work){$blocks.Add("<div class='serviceNote'><h3>Work Performed</h3><div>$work</div></div>")}
+            if($outcome){$blocks.Add("<div class='serviceNote'><h3>Service Outcome</h3><div>$outcome</div></div>")}
+            if($further){$blocks.Add("<div class='serviceNote'><h3>Further Advice</h3><div>$further</div></div>")}
+            if($blocks.Count){$serviceNotesSection="<h2>Service Summary</h2><div class='serviceRecord customerServiceRecord'>$($blocks -join '')</div>"}
+        }
+    }
     $serviceSection=''
     if($ServiceLog.Count){
         $serviceRows=foreach($a in $ServiceLog){
@@ -559,7 +586,7 @@ h2{margin-top:32px}table{border-collapse:collapse;width:100%;font-size:13px;marg
 .customerReport .scoreExplain{margin-top:18px}
 .customerReport footer{margin-top:28px}
 footer{margin-top:34px;padding-top:16px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:12px}
-.sectionLead{color:#64748b;font-size:12px;margin:-5px 0 12px}
+.serviceRecord{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 20px}.serviceNote{border:1px solid #e5e7eb;background:#f8fafc;border-radius:8px;padding:12px 14px;line-height:1.45}.serviceNote h3{font-size:12px;text-transform:uppercase;letter-spacing:.35px;color:#475569;margin:0 0 6px}.sectionLead{color:#64748b;font-size:12px;margin:-5px 0 12px}
 table{page-break-inside:auto}tr{page-break-inside:avoid;page-break-after:auto}thead{display:table-header-group}
 h2,h3{page-break-after:avoid}
 @media(max-width:820px){.topInner{display:block}.reportType{text-align:left;margin-top:14px}.job{grid-template-columns:1fr 1fr}.scorecard{align-items:flex-start;flex-wrap:wrap}.scoreMeta{margin-left:0;text-align:left;width:100%}}
@@ -596,6 +623,7 @@ h2,h3{page-break-after:avoid}
 </div>
 $technicianWorkflowSection
 $customerCategorySummary
+$serviceNotesSection
 <h2>$(if($Audience -eq 'Customer'){'Issues & Recommendations'}else{'Needs Attention'})</h2>
 <div class='sectionLead'>$(if($Audience -eq 'Customer'){'Only items that may need attention or a recommendation are shown below. Technical evidence is retained in the Technician Report.'}else{'Items below are the non-healthy findings that may require maintenance, investigation or repair.'})</div>
 <div class='attentionBox'><table><thead><tr><th>Category</th><th>Check</th><th>Status</th><th>Finding</th><th>Recommendation</th></tr></thead><tbody>$attentionRows</tbody></table></div>
@@ -616,6 +644,7 @@ RBZ PC Health is a diagnostic support tool. Service actions shown in this report
 }
 
 Export-ModuleMember -Function Get-RBZHealthScore,Get-RBZScoreLabel,Get-RBZCategoryBreakdown,Export-RBZReport
+
 
 
 

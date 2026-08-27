@@ -372,6 +372,28 @@ Add-Type -AssemblyName PresentationFramework
 <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,10,0,0"><Button Name="SetBaselineButton" Content="Set Current as Baseline" Width="165" Height="32" IsEnabled="False"/><Button Name="ClearHistoryButton" Content="Clear Session History" Width="145" Height="32" Margin="8,0,0,0"/></StackPanel>
 </Grid></TabItem>
 
+<!-- RBZ080RC6_SERVICE_NOTES -->
+<TabItem Header="Service Record"><ScrollViewer VerticalScrollBarVisibility="Auto"><Grid Margin="12">
+<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+<Border Grid.Row="0" Background="{DynamicResource RBZ.PanelAlt}" BorderBrush="{DynamicResource RBZ.Border}" BorderThickness="1" Padding="14" Margin="0,0,0,12"><StackPanel>
+<TextBlock Text="Technician Service Record" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource RBZ.Text}"/>
+<TextBlock Text="Record the customer's issue, work carried out and final service outcome. Notes stay with this session and are included in reports as appropriate." Margin="0,4,0,0" TextWrapping="Wrap" Foreground="{DynamicResource RBZ.Text}"/>
+</StackPanel></Border>
+<Grid Grid.Row="1" Margin="0,0,0,12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+<StackPanel Margin="0,0,6,0"><TextBlock Text="CUSTOMER COMPLAINT / ISSUE DESCRIPTION" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource RBZ.Text}"/><TextBox Name="CustomerComplaintBox" Height="105" Margin="0,5,0,0" Padding="8" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/></StackPanel>
+<StackPanel Grid.Column="1" Margin="6,0,0,0"><TextBlock Text="TECHNICIAN NOTES" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource RBZ.Text}"/><TextBox Name="TechnicianNotesBox" Height="105" Margin="0,5,0,0" Padding="8" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/></StackPanel>
+</Grid>
+<Grid Grid.Row="2" Margin="0,0,0,12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+<StackPanel Margin="0,0,6,0"><TextBlock Text="WORK PERFORMED" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource RBZ.Text}"/><TextBox Name="WorkPerformedBox" Height="105" Margin="0,5,0,0" Padding="8" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/></StackPanel>
+<StackPanel Grid.Column="1" Margin="6,0,0,0"><TextBlock Text="SERVICE OUTCOME" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource RBZ.Text}"/><TextBox Name="ServiceOutcomeBox" Height="105" Margin="0,5,0,0" Padding="8" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/></StackPanel>
+</Grid>
+<StackPanel Grid.Row="3" Margin="0,0,0,12"><TextBlock Text="FURTHER RECOMMENDATIONS / CUSTOMER ADVICE" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource RBZ.Text}"/><TextBox Name="FurtherRecommendationsBox" Height="90" Margin="0,5,0,0" Padding="8" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/></StackPanel>
+<Border Grid.Row="4" Background="{DynamicResource RBZ.PanelAlt}" BorderBrush="{DynamicResource RBZ.Border}" BorderThickness="1" Padding="12"><StackPanel>
+<CheckBox Name="IncludeServiceSummaryCustomerCheck" Content="Include customer-safe service summary in Customer Report" IsChecked="True"/>
+<TextBlock Text="Technician Notes are never included in the Customer Report." Margin="22,5,0,0" FontSize="11" Foreground="{DynamicResource RBZ.Text}"/>
+</StackPanel></Border>
+<StackPanel Grid.Row="5" Orientation="Horizontal" Margin="0,12,0,0"><Button Name="ClearServiceRecordButton" Content="Clear Service Record" Width="145" Height="32"/><TextBlock Name="ServiceRecordStatusText" Text="Service record is session-only until a report is generated." Margin="12,8,0,0" Foreground="{DynamicResource RBZ.Text}"/></StackPanel>
+</Grid></ScrollViewer></TabItem>
 <TabItem Header="Repair Centre"><Grid Margin="10"><Grid.RowDefinitions>
 <RowDefinition Height="Auto"/>
 <RowDefinition Height="3*"/>
@@ -435,7 +457,7 @@ FontSize="12"/>
 
 $reader=New-Object System.Xml.XmlNodeReader $xaml
 $window=[Windows.Markup.XamlReader]::Load($reader)
-foreach($name in @('CustomerBox','JobBox','ScanButton','CustomerReportButton','TechnicianReportButton','OpenReportsButton','ResultsGrid','AttentionGrid','PriorityGrid','PriorityDetailTitle','PriorityDetailStatus','PriorityDetailSummary','PriorityDetailReason','PriorityDetailAction','PriorityDetailGuidance','OpenPriorityFindingButton','OpenPriorityRepairButton','ScoreText','ScoreLabel','StatusText','Progress','ScanProgressText','ScanElapsedText','DeviceText','VersionText','HealthyCount','InfoCount','RecommendCount','WarningCount','CriticalCount','TotalCount','DetailTitle','DetailStatus','DetailSummary','DetailBody','DetailRecommendation','CopyDetailsButton','ActionGrid','RunActionsButton','ActionStatusText','ActionLogBox','ActionProgressBar','ActionProgressText','ActionElapsedText','BaselineScoreText','CurrentScoreText','ScoreChangeText','ScanCountText','ComparisonSummaryText','ComparisonGrid','SetBaselineButton','ClearHistoryButton','HeaderBorder','JobPanelBorder','StatsBorder','ContentBorder','MainTabs','DetailBorder','ComparisonHeaderBorder','LogoPlaceholder','BrandLogo','LogoFallbackText','ThemeButton','CustomerLabel','JobLabel')){Set-Variable -Name $name -Value $window.FindName($name)}
+foreach($name in @('CustomerBox','JobBox','CustomerComplaintBox','TechnicianNotesBox','WorkPerformedBox','ServiceOutcomeBox','FurtherRecommendationsBox','IncludeServiceSummaryCustomerCheck','ClearServiceRecordButton','ServiceRecordStatusText','ScanButton','CustomerReportButton','TechnicianReportButton','OpenReportsButton','ResultsGrid','AttentionGrid','PriorityGrid','PriorityDetailTitle','PriorityDetailStatus','PriorityDetailSummary','PriorityDetailReason','PriorityDetailAction','PriorityDetailGuidance','OpenPriorityFindingButton','OpenPriorityRepairButton','ScoreText','ScoreLabel','StatusText','Progress','ScanProgressText','ScanElapsedText','DeviceText','VersionText','HealthyCount','InfoCount','RecommendCount','WarningCount','CriticalCount','TotalCount','DetailTitle','DetailStatus','DetailSummary','DetailBody','DetailRecommendation','CopyDetailsButton','ActionGrid','RunActionsButton','ActionStatusText','ActionLogBox','ActionProgressBar','ActionProgressText','ActionElapsedText','BaselineScoreText','CurrentScoreText','ScoreChangeText','ScanCountText','ComparisonSummaryText','ComparisonGrid','SetBaselineButton','ClearHistoryButton','HeaderBorder','JobPanelBorder','StatsBorder','ContentBorder','MainTabs','DetailBorder','ComparisonHeaderBorder','LogoPlaceholder','BrandLogo','LogoFallbackText','ThemeButton','CustomerLabel','JobLabel')){Set-Variable -Name $name -Value $window.FindName($name)}
 
 if($Customer){$CustomerBox.Text=$Customer}
 $VersionText.Text="$($Config.app.productSubtitle) | v$($Config.app.version)"
@@ -620,8 +642,8 @@ function Open-RBZPriorityRepairAction {
     }
 
     # Attention=0, Technician Priorities=1, All Results=2,
-    # Before/After=3, Repair Centre=4.
-    $MainTabs.SelectedIndex=4
+    # Before/After=3, Service Record=4, Repair Centre=5.
+    $MainTabs.SelectedIndex=5
     $ActionGrid.SelectedItem=$match[0]
     $ActionGrid.ScrollIntoView($match[0])
         $script:RepairContextFinding=$item
@@ -1023,6 +1045,23 @@ $RunActionsButton.Add_Click({
     }
 })
 
+$ClearServiceRecordButton.Add_Click({
+    $answer=[System.Windows.MessageBox]::Show('Clear all Service Record fields for this session?','RBZ PC Health - Clear Service Record',[System.Windows.MessageBoxButton]::YesNo,[System.Windows.MessageBoxImage]::Question)
+    if($answer -ne [System.Windows.MessageBoxResult]::Yes){return}
+    $CustomerComplaintBox.Clear();$TechnicianNotesBox.Clear();$WorkPerformedBox.Clear();$ServiceOutcomeBox.Clear();$FurtherRecommendationsBox.Clear()
+    $IncludeServiceSummaryCustomerCheck.IsChecked=$true
+    $ServiceRecordStatusText.Text='Service record cleared.';$StatusText.Text='Service record cleared.'
+})
+function Get-RBZCurrentServiceNotes {
+    [pscustomobject]@{
+        CustomerComplaint=[string]$CustomerComplaintBox.Text
+        TechnicianNotes=[string]$TechnicianNotesBox.Text
+        WorkPerformed=[string]$WorkPerformedBox.Text
+        ServiceOutcome=[string]$ServiceOutcomeBox.Text
+        FurtherRecommendations=[string]$FurtherRecommendationsBox.Text
+        IncludeInCustomerReport=[bool]$IncludeServiceSummaryCustomerCheck.IsChecked
+    }
+}
 function New-RBZSelectedReport {
     param([ValidateSet('Customer','Technician')][string]$Audience)
 
@@ -1040,6 +1079,7 @@ function New-RBZSelectedReport {
             -JobReference $JobBox.Text `
             -Audience $Audience `
             -ServiceLog @($script:ServiceLog) `
+            -ServiceNotes (Get-RBZCurrentServiceNotes) `
             -BaselineSnapshot $script:BaselineSnapshot `
             -CurrentSnapshot $script:CurrentSnapshot
 
@@ -1071,6 +1111,7 @@ $OpenReportsButton.Add_Click({
 })
 
 $window.ShowDialog()|Out-Null
+
 
 
 
