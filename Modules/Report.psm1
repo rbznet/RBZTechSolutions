@@ -315,8 +315,14 @@ function Export-RBZReport {
         $work=& $enc ([string]$ServiceNotes.WorkPerformed)
         $outcome=& $enc ([string]$ServiceNotes.ServiceOutcome)
         $further=& $enc ([string]$ServiceNotes.FurtherRecommendations)
+        $technician=& $enc ([string]$ServiceNotes.Technician)
+        $finalStatus=& $enc ([string]$ServiceNotes.FinalStatus)
+        $completed=& $enc ([string]$ServiceNotes.Completed)
         $blocks=[System.Collections.Generic.List[string]]::new()
         if($Audience -eq 'Technician'){
+            if($technician){$blocks.Add("<div class='serviceNote'><h3>Technician</h3><div>$technician</div></div>")}
+            if($finalStatus){$blocks.Add("<div class='serviceNote'><h3>Final Service Status</h3><div>$finalStatus</div></div>")}
+            if($completed){$blocks.Add("<div class='serviceNote'><h3>Completed</h3><div>$completed</div></div>")}
             if($complaint){$blocks.Add("<div class='serviceNote'><h3>Customer Complaint / Issue</h3><div>$complaint</div></div>")}
             if($techNotes){$blocks.Add("<div class='serviceNote'><h3>Technician Notes</h3><div>$techNotes</div></div>")}
             if($work){$blocks.Add("<div class='serviceNote'><h3>Work Performed</h3><div>$work</div></div>")}
@@ -324,6 +330,8 @@ function Export-RBZReport {
             if($further){$blocks.Add("<div class='serviceNote'><h3>Further Recommendations</h3><div>$further</div></div>")}
             if($blocks.Count){$serviceNotesSection="<h2>Service Record</h2><div class='serviceRecord'>$($blocks -join '')</div>"}
         }elseif([bool]$ServiceNotes.IncludeInCustomerReport){
+            if($finalStatus){$blocks.Add("<div class='serviceNote'><h3>Service Status</h3><div>$finalStatus</div></div>")}
+            if($completed){$blocks.Add("<div class='serviceNote'><h3>Completed</h3><div>$completed</div></div>")}
             if($complaint){$blocks.Add("<div class='serviceNote'><h3>Reason for Service</h3><div>$complaint</div></div>")}
             if($work){$blocks.Add("<div class='serviceNote'><h3>Work Performed</h3><div>$work</div></div>")}
             if($outcome){$blocks.Add("<div class='serviceNote'><h3>Service Outcome</h3><div>$outcome</div></div>")}
@@ -644,6 +652,7 @@ RBZ PC Health is a diagnostic support tool. Service actions shown in this report
 }
 
 Export-ModuleMember -Function Get-RBZHealthScore,Get-RBZScoreLabel,Get-RBZCategoryBreakdown,Export-RBZReport
+
 
 
 
