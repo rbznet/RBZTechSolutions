@@ -75,6 +75,32 @@ function Get-RBZServiceActions {
             -Description 'Restarts available Windows Update services without deleting update caches, history or policy.'))
     }
 
+    # RBZ080RC9_REPAIR_EXPANSION
+    if($Config.remediation.allowTriggerWindowsUpdateScan){
+        $actions.Add((New-RBZAction -Id 'TriggerWindowsUpdateScan' -Name 'Trigger Windows Update scan' -Category 'Updates' -Risk 'Low' `
+            -Description 'Requests a fresh Windows Update detection scan. The scan continues asynchronously; RBZ does not claim that updates were downloaded or installed.'))
+    }
+
+    if($Config.remediation.allowClearWindowsUpdateDownloadCache){
+        $actions.Add((New-RBZAction -Id 'ClearWindowsUpdateDownloadCache' -Name 'Clear Windows Update download cache' -Category 'Updates' -Risk 'Medium' `
+            -Description 'Stops update services, clears only SoftwareDistribution\Download, restarts services and verifies service recovery. Windows Update history and policy are not reset.'))
+    }
+
+    if($Config.remediation.allowRepairWindowsUpdateComponents){
+        $actions.Add((New-RBZAction -Id 'RepairWindowsUpdateComponents' -Name 'Repair Windows Update components' -Category 'Updates' -Risk 'Medium' `
+            -Description 'Resets SoftwareDistribution and Catroot2 by renaming them, then restarts Windows Update services. This is more invasive and should follow lower-risk update actions.'))
+    }
+
+    if($Config.remediation.allowResetNetworkStack){
+        $actions.Add((New-RBZAction -Id 'ResetNetworkStack' -Name 'Reset Windows network stack' -Category 'Network' -Risk 'Medium' -RequiresRestart $true `
+            -Description 'Runs Winsock and TCP/IP stack reset commands. A Windows restart is required and VPN/custom networking may need review afterwards.'))
+    }
+
+    if($Config.remediation.allowResetMicrosoftStoreCache){
+        $actions.Add((New-RBZAction -Id 'ResetMicrosoftStoreCache' -Name 'Reset Microsoft Store cache' -Category 'Windows' -Risk 'Low' `
+            -Description 'Runs the Windows Store cache reset tool. It does not uninstall Store applications.'))
+    }
+
     if($Config.remediation.allowTempCleanup){
         $actions.Add((New-RBZAction -Id 'TempCleanup' -Name 'Temporary file cleanup' -Category 'Cleanup' -Risk 'Low' `
             -Description 'Deletes accessible files from the current-user TEMP folder and Windows TEMP folder. Locked/in-use items are skipped.'))
@@ -695,6 +721,336 @@ RBZ did not change the NTP server, registry settings or policy.
                 $result.VerificationCategory='Updates';$result.VerificationCheck='Windows Update services'
                 $result.VerificationStatus=$(if($ok){'Healthy'}else{'Warning'});$result.VerificationSummary=$result.Summary;$result.VerificationDetails=$result.Details
             }
+            'TriggerWindowsUpdateScan' {
+                Write-RBZProgressState -ProgressPath $ProgressPath -Stage 'Trigger Windows Update scan' -Message 'Requesting fresh update detection...' -Started $started -Indeterminate:$true
+
+                $wu=Get-Service wuauserv -ErrorAction SilentlyContinue
+                if($wu -and $wu.StartType -ne 'Disabled' -and $wu.Status -ne 'Running'){
+                    Start-Service wuauserv -ErrorAction SilentlyContinue
+                    Start-Sleep -Seconds 1
+                }
+
+                $methods=[System.Collections.Generic.List[string]]::new()
+                $requested=$false
+                $errors=[System.Collections.Generic.List[string]]::new()
+
+                try{
+                    $autoUpdate=New-Object -ComObject Microsoft.Update.AutoUpdate
+                    $autoUpdate.DetectNow()
+                    $methods.Add('Microsoft.Update.AutoUpdate.DetectNow')
+                    $requested=$true
+                }catch{
+                    $errors.Add("COM DetectNow: $($_.Exception.Message)")
+                }
+
+                $uso=Join-Path $env:SystemRoot 'System32\UsoClient.exe'
+                if(Test-Path $uso){
+                    try{
+                        $r=Invoke-RBZNativeCommand -FilePath $uso -Arguments @('StartScan') -ProgressPath $ProgressPath -Stage 'Windows Update StartScan'
+                        $methods.Add("UsoClient StartScan (exit $($r.ExitCode))")
+                        # UsoClient is asynchronous and often returns no useful output.
+                        $requested=$true
+                    }catch{
+                        $errors.Add("UsoClient StartScan: $($_.Exception.Message)")
+                    }
+                }
+
+                Start-Sleep -Seconds 2
+                $wu=Get-Service wuauserv -ErrorAction SilentlyContinue
+                $serviceState=if($wu){[string]$wu.Status}else{'Unavailable'}
+
+                $result.Success=$requested
+                $result.Summary=$(if($requested){'Windows Update scan request was submitted.'}else{'Windows Update scan request could not be submitted.'})
+                $result.Details=@"
+Methods attempted:
+$($methods -join "`n")
+
+Errors:
+$($errors -join "`n")
+
+Windows Update service state: $serviceState
+
+Windows Update detection continues asynchronously. This action does not mean that updates were downloaded or installed.
+"@
+                $result.VerificationCategory='Updates'
+                $result.VerificationCheck='Windows Update scan request'
+                $result.VerificationStatus=$(if($requested){'Info'}else{'Warning'})
+                $result.VerificationSummary=$(if($requested){'A fresh Windows Update detection request was submitted.'}else{'A fresh Windows Update detection request could not be submitted.'})
+                $result.VerificationDetails=$result.Details
+            }
+
+            'ClearWindowsUpdateDownloadCache' {
+                Write-RBZProgressState -ProgressPath $ProgressPath -Stage 'Clear Windows Update download cache' -Message 'Stopping update services...' -Started $started -Indeterminate:$true
+
+                $downloadPath=Join-Path $env:SystemRoot 'SoftwareDistribution\Download'
+                $services=@('bits','wuauserv')
+                $log=[System.Collections.Generic.List[string]]::new()
+                $stopped=[System.Collections.Generic.List[string]]::new()
+
+                foreach($n in $services){
+                    $svc=Get-Service $n -ErrorAction SilentlyContinue
+                    if(-not $svc){$log.Add("$n : not installed");continue}
+                    if($svc.Status -eq 'Running'){
+                        try{Stop-Service $n -Force -ErrorAction Stop;$stopped.Add($n);$log.Add("$n : stopped")}
+                        catch{throw "Could not stop $n. $($_.Exception.Message)"}
+                    }else{$log.Add("$n : already $($svc.Status)")}
+                }
+
+                $before=0L;$after=0L;$deleted=0;$skipped=0
+                if(Test-Path $downloadPath){
+                    try{
+                        $sum=(Get-ChildItem $downloadPath -File -Recurse -Force -ErrorAction SilentlyContinue|Measure-Object Length -Sum).Sum
+                        if($null -ne $sum){$before=[long]$sum}
+                    }catch{}
+
+                    foreach($item in @(Get-ChildItem $downloadPath -Force -ErrorAction SilentlyContinue)){
+                        try{Remove-Item $item.FullName -Recurse -Force -ErrorAction Stop;$deleted++}
+                        catch{$skipped++}
+                    }
+
+                    try{
+                        $sum=(Get-ChildItem $downloadPath -File -Recurse -Force -ErrorAction SilentlyContinue|Measure-Object Length -Sum).Sum
+                        if($null -ne $sum){$after=[long]$sum}
+                    }catch{}
+                }
+
+                foreach($n in $services){
+                    $svc=Get-Service $n -ErrorAction SilentlyContinue
+                    if($svc -and $svc.StartType -ne 'Disabled'){
+                        try{
+                            if($svc.Status -ne 'Running'){Start-Service $n -ErrorAction Stop;Start-Sleep -Milliseconds 500}
+                            $svc=Get-Service $n -ErrorAction Stop
+                            $log.Add("$n : final $($svc.Status)")
+                        }catch{$log.Add("$n : restart error - $($_.Exception.Message)")}
+                    }
+                }
+
+                $wu=Get-Service wuauserv -ErrorAction SilentlyContinue
+                $serviceOk=($null -eq $wu -or $wu.StartType -eq 'Disabled' -or $wu.Status -eq 'Running')
+                $recovered=[math]::Max(0,$before-$after)
+
+                $result.BytesRecovered=$recovered
+                $result.Success=($serviceOk -and $skipped -eq 0)
+                $result.Summary=$(if($result.Success){"Windows Update download cache cleared. Approximately {0:N2} MB removed." -f ($recovered/1MB)}else{'Windows Update download cache cleanup completed with items requiring review.'})
+                $result.Details="Path: $downloadPath`nItems removed: $deleted`nItems skipped: $skipped`nBytes before: $before`nBytes after: $after`n`n$($log -join "`n")"
+                $result.VerificationCategory='Updates'
+                $result.VerificationCheck='Windows Update download cache'
+                $result.VerificationStatus=$(if($result.Success){'Healthy'}else{'Recommend'})
+                $result.VerificationSummary=$result.Summary
+                $result.VerificationDetails=$result.Details
+            }
+
+            'RepairWindowsUpdateComponents' {
+                Write-RBZProgressState -ProgressPath $ProgressPath -Stage 'Repair Windows Update components' -Message 'Stopping Windows Update services...' -Started $started -Indeterminate:$true
+
+                $services=@('bits','wuauserv','cryptsvc')
+                $log=[System.Collections.Generic.List[string]]::new()
+                foreach($n in $services){
+                    $svc=Get-Service $n -ErrorAction SilentlyContinue
+                    if(-not $svc){$log.Add("$n : not installed");continue}
+                    if($svc.Status -eq 'Running'){
+                        try{Stop-Service $n -Force -ErrorAction Stop;$log.Add("$n : stopped")}
+                        catch{throw "Could not stop $n. $($_.Exception.Message)"}
+                    }else{$log.Add("$n : already $($svc.Status)")}
+                }
+
+                $stamp=(Get-Date).ToString('yyyyMMdd-HHmmss')
+                $targets=@(
+                    [pscustomobject]@{Path=(Join-Path $env:SystemRoot 'SoftwareDistribution');Name="SoftwareDistribution.rbz-$stamp"},
+                    [pscustomobject]@{Path=(Join-Path $env:SystemRoot 'System32\catroot2');Name="catroot2.rbz-$stamp"}
+                )
+
+                foreach($t in $targets){
+                    if(Test-Path $t.Path){
+                        $parent=Split-Path -Parent $t.Path
+                        try{
+                            Rename-Item -LiteralPath $t.Path -NewName $t.Name -ErrorAction Stop
+                            $log.Add("$($t.Path) -> $(Join-Path $parent $t.Name)")
+                        }catch{
+                            throw "Could not reset $($t.Path). $($_.Exception.Message)"
+                        }
+                    }else{
+                        $log.Add("$($t.Path) : not present")
+                    }
+                }
+
+                foreach($n in $services){
+                    $svc=Get-Service $n -ErrorAction SilentlyContinue
+                    if($svc -and $svc.StartType -ne 'Disabled'){
+                        try{
+                            Start-Service $n -ErrorAction Stop
+                            Start-Sleep -Milliseconds 750
+                            $svc=Get-Service $n -ErrorAction Stop
+                            $log.Add("$n : final $($svc.Status)")
+                        }catch{$log.Add("$n : restart error - $($_.Exception.Message)")}
+                    }
+                }
+
+                Start-Sleep -Seconds 2
+                $sdExists=Test-Path (Join-Path $env:SystemRoot 'SoftwareDistribution')
+                $wu=Get-Service wuauserv -ErrorAction SilentlyContinue
+                $serviceOk=($null -eq $wu -or $wu.StartType -eq 'Disabled' -or $wu.Status -eq 'Running')
+                $verified=($sdExists -and $serviceOk)
+
+                $result.Success=$verified
+                $result.Summary=$(if($verified){'Windows Update components were reset and service recovery was verified.'}else{'Windows Update component reset completed, but recovery could not be fully verified.'})
+                $result.Details=($log -join "`n")
+                $result.VerificationCategory='Updates'
+                $result.VerificationCheck='Windows Update components'
+                $result.VerificationStatus=$(if($verified){'Healthy'}else{'Warning'})
+                $result.VerificationSummary=$result.Summary
+                $result.VerificationDetails=$result.Details
+            }
+
+            # RBZ080RC9D_RESTART_REQUIRED
+            'ResetNetworkStack' {
+                Write-RBZProgressState -ProgressPath $ProgressPath -Stage 'Reset Windows network stack' -Message 'Resetting Winsock and TCP/IP...' -Started $started -Indeterminate:$true
+
+                $winsock=Invoke-RBZNativeCommand -FilePath 'netsh.exe' -Arguments @('winsock','reset') -ProgressPath $ProgressPath -Stage 'Winsock reset'
+                $ip=Invoke-RBZNativeCommand -FilePath 'netsh.exe' -Arguments @('int','ip','reset') -ProgressPath $ProgressPath -Stage 'TCP/IP reset'
+
+                $winsockText=[string]$winsock.Output
+                $ipText=[string]$ip.Output
+
+                $winsockProcessed=(
+                    $winsockText -match '(?i)successfully reset the winsock catalog' -or
+                    $winsockText -match '(?i)restart the computer'
+                )
+
+                $ipProcessed=(
+                    $ipText -match '(?im)^\s*Resetting .*OK!' -or
+                    $ipText -match '(?i)restart the computer to complete this action'
+                )
+
+                $knownAccessDeniedOnly=(
+                    $ipText -match '(?i)access is denied' -and
+                    $ipText -match '(?im)^\s*Resetting .*OK!'
+                )
+
+                $restartRequested=(
+                    $winsockText -match '(?i)restart the computer' -or
+                    $ipText -match '(?i)restart the computer'
+                )
+
+                # Treat the common netsh behaviour as processed/restart-required
+                # even when netsh returns exit code 1 because one protected item
+                # reports Access Denied. A true failure is when the reset did not
+                # materially process at all.
+                $processed=(
+                    $winsockProcessed -and
+                    $ipProcessed -and
+                    ($knownAccessDeniedOnly -or $ip.ExitCode -eq 0 -or $restartRequested)
+                )
+
+                $trueFailure=(-not $processed)
+
+                $result.Success=(-not $trueFailure)
+                $result.RequiresRestart=$processed
+                $result.Summary=$(if($processed){
+                    'Windows network stack reset was processed. Restart Windows to complete the repair.'
+                }else{
+                    'Windows network stack reset could not be processed successfully.'
+                })
+
+                $result.Details=@"
+Winsock exit code: $($winsock.ExitCode)
+Winsock processed: $winsockProcessed
+
+$winsockText
+
+TCP/IP exit code: $($ip.ExitCode)
+TCP/IP processed: $ipProcessed
+Known Access Denied pattern detected: $knownAccessDeniedOnly
+
+$ipText
+
+Restart required: $restartRequested
+
+Interpretation:
+RBZ treats the known netsh Access Denied pattern as restart-required when the Winsock/TCP-IP reset was otherwise processed. A restart is still required before final verification.
+"@
+
+                $result.VerificationCategory='Network'
+                $result.VerificationCheck='Windows network stack'
+
+                if($processed){
+                    $result.VerificationStatus='Recommend'
+                    $result.VerificationSummary='Restart Required - Winsock and TCP/IP reset were processed. Restart Windows, then run Verify Repairs.'
+                }else{
+                    $result.VerificationStatus='Warning'
+                    $result.VerificationSummary='Network stack reset did not process successfully.'
+                }
+
+                $result.VerificationDetails=$result.Details
+            }
+
+            # RBZ080RC9C_STORE_RESET
+            'ResetMicrosoftStoreCache' {
+                Write-RBZProgressState -ProgressPath $ProgressPath -Stage 'Reset Microsoft Store cache' -Message 'Running WSReset...' -Started $started -Indeterminate:$true
+
+                $wsreset=Join-Path $env:SystemRoot 'System32\wsreset.exe'
+                if(-not(Test-Path $wsreset)){throw 'wsreset.exe is not available on this Windows installation.'}
+
+                $beforePkg=Get-AppxPackage -Name Microsoft.WindowsStore -ErrorAction SilentlyContinue
+                $beforeStatus=if($beforePkg){[string]$beforePkg.Status}else{'Not installed'}
+
+                $proc=$null
+                $timedOut=$false
+                $exitCode=$null
+
+                try{
+                    $proc=Start-Process -FilePath $wsreset -PassThru -ErrorAction Stop
+
+                    # WSReset may briefly open a Store window. Give it a reasonable
+                    # period to finish, but do not hang RBZ indefinitely.
+                    if(-not $proc.WaitForExit(30000)){
+                        $timedOut=$true
+                    }else{
+                        $exitCode=$proc.ExitCode
+                    }
+                }catch{
+                    throw "Could not launch wsreset.exe. $($_.Exception.Message)"
+                }
+
+                Start-Sleep -Seconds 2
+
+                $afterPkg=Get-AppxPackage -Name Microsoft.WindowsStore -ErrorAction SilentlyContinue
+                $afterStatus=if($afterPkg){[string]$afterPkg.Status}else{'Not installed'}
+                $packageHealthy=($afterPkg -and $afterStatus -eq 'Ok')
+
+                # A timeout is not automatically a failure because WSReset can hand
+                # off to the Store UI and continue outside the original process.
+                # The post-action package health is the stronger verification signal.
+                $ok=$packageHealthy -and (-not $timedOut -or $afterPkg)
+
+                $result.Success=$ok
+                $result.Summary=$(if($ok){'Microsoft Store cache reset completed and Store package health was verified.'}else{'Microsoft Store cache reset could not be verified.'})
+
+                $result.Details=@"
+WSReset path: $wsreset
+Process started: $([bool]$proc)
+Process timed out after 30 seconds: $timedOut
+Process exit code: $(if($null -eq $exitCode){'Not available'}else{$exitCode})
+
+Store package before:
+Present: $([bool]$beforePkg)
+Status: $beforeStatus
+
+Store package after:
+Present: $([bool]$afterPkg)
+Status: $afterStatus
+Package: $(if($afterPkg){$afterPkg.PackageFullName}else{'Not found'})
+Install location: $(if($afterPkg){$afterPkg.InstallLocation}else{'Not found'})
+
+RBZ verifies package health after WSReset because wsreset.exe can behave as a GUI hand-off and does not always provide useful console output.
+"@
+
+                $result.VerificationCategory='Windows'
+                $result.VerificationCheck='Microsoft Store cache'
+                $result.VerificationStatus=$(if($ok){'Healthy'}else{'Warning'})
+                $result.VerificationSummary=$(if($ok){'Microsoft Store package reports Status=Ok after cache reset.'}else{"Microsoft Store package health could not be verified. Status: $afterStatus"})
+                $result.VerificationDetails=$result.Details
+            }
             'TempCleanup' {
                 Write-RBZProgressState -ProgressPath $ProgressPath -Stage 'Temporary file cleanup' -Message 'Removing accessible temporary files...' -Started $started -Indeterminate:$true
                 $targets=@()
@@ -742,6 +1098,9 @@ RBZ did not change the NTP server, registry settings or policy.
 }
 
 Export-ModuleMember -Function Get-RBZServiceActions,Invoke-RBZServiceAction,New-RBZRestorePoint,Get-RBZSystemProtectionState,Enable-RBZSystemProtection
+
+
+
 
 
 

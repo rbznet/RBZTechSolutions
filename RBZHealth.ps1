@@ -409,15 +409,28 @@ Add-Type -AssemblyName PresentationFramework
 <TextBlock Name="ServiceRecordStatusText" Text="Service record is session-only until a report is generated." Margin="12,8,0,0" Foreground="{DynamicResource RBZ.Text}"/>
 </StackPanel>
 </Grid></ScrollViewer></TabItem>
+<!-- RBZ080RC9B_REPAIR_SPLITTER -->
 <TabItem Header="Repair Centre"><Grid Margin="10"><Grid.RowDefinitions>
 <RowDefinition Height="Auto"/>
-<RowDefinition Height="3*"/>
-<RowDefinition Height="Auto"/>
-<RowDefinition Height="Auto"/>
-<RowDefinition Height="2*"/>
+<RowDefinition Height="3*" MinHeight="220"/>
+<RowDefinition Height="8"/>
+<RowDefinition Height="2*" MinHeight="120"/>
 </Grid.RowDefinitions>
-<TextBlock Text="Low-risk technician-approved actions only. Run a new scan after service actions to create an after-service comparison." Foreground="#6B7280" Margin="0,0,0,10"/>
-<DataGrid Grid.Row="1"
+
+<TextBlock Grid.Row="0"
+Text="Low-risk technician-approved actions only. Run a new scan after service actions to create an after-service comparison."
+Foreground="#6B7280"
+Margin="0,0,0,10"/>
+
+<!-- Upper Repair Centre area: action list + controls + progress stay together. -->
+<Grid Grid.Row="1">
+<Grid.RowDefinitions>
+<RowDefinition Height="*"/>
+<RowDefinition Height="Auto"/>
+<RowDefinition Height="Auto"/>
+</Grid.RowDefinitions>
+
+<DataGrid Grid.Row="0"
 Name="ActionGrid"
 AutoGenerateColumns="False"
 CanUserAddRows="False"
@@ -433,13 +446,38 @@ ScrollViewer.IsDeferredScrollingEnabled="False"><DataGrid.Columns>
 <DataGridTextColumn Header="Risk" Binding="{Binding Risk}" IsReadOnly="True" Width="70"/>
 <DataGridTextColumn Header="Description" Binding="{Binding Description}" IsReadOnly="True" Width="*"/>
 </DataGrid.Columns></DataGrid>
-<StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,8"><Button Name="RunActionsButton" Content="Run Selected Actions" Width="160" Height="34" IsEnabled="False"/><TextBlock Name="ActionStatusText" Margin="14,8,0,0" Foreground="#6B7280"/></StackPanel>
-<Grid Grid.Row="3" Margin="0,0,0,8">
-<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+
+<StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,8">
+<Button Name="RunActionsButton" Content="Run Selected Actions" Width="160" Height="34" IsEnabled="False"/>
+<TextBlock Name="ActionStatusText" Margin="14,8,0,0" Foreground="#6B7280"/>
+</StackPanel>
+
+<Grid Grid.Row="2" Margin="0,0,0,4">
+<Grid.RowDefinitions>
+<RowDefinition Height="Auto"/>
+<RowDefinition Height="Auto"/>
+</Grid.RowDefinitions>
 <ProgressBar Name="ActionProgressBar" Height="16" Minimum="0" Maximum="100" IsIndeterminate="False"/>
-<Grid Grid.Row="1" Margin="0,5,0,0"><TextBlock Name="ActionProgressText" Text="Ready." Foreground="#6B7280"/><TextBlock Name="ActionElapsedText" Text="" HorizontalAlignment="Right" Foreground="#6B7280"/></Grid>
+<Grid Grid.Row="1" Margin="0,5,0,0">
+<TextBlock Name="ActionProgressText" Text="Ready." Foreground="#6B7280"/>
+<TextBlock Name="ActionElapsedText" Text="" HorizontalAlignment="Right" Foreground="#6B7280"/>
 </Grid>
-<TextBox Grid.Row="4"
+</Grid>
+</Grid>
+
+<!-- Drag this bar vertically to resize the action area and output log. -->
+<GridSplitter Grid.Row="2"
+Height="8"
+HorizontalAlignment="Stretch"
+VerticalAlignment="Stretch"
+ResizeDirection="Rows"
+ResizeBehavior="PreviousAndNext"
+ShowsPreview="True"
+Background="{DynamicResource RBZ.Border}"
+Cursor="SizeNS"
+Margin="0,1,0,1"/>
+
+<TextBox Grid.Row="3"
 Name="ActionLogBox"
 IsReadOnly="True"
 VerticalAlignment="Stretch"
@@ -450,14 +488,31 @@ VerticalScrollBarVisibility="Auto"
 HorizontalScrollBarVisibility="Auto"
 FontFamily="Consolas"
 FontSize="12"/>
+
 </Grid></TabItem>
 </TabControl></Border>
 
 <Border Grid.Row="4" Margin="18,10,18,14">
 <Grid>
-<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-<ProgressBar Name="Progress" Height="10" Minimum="0" Maximum="100" IsIndeterminate="False" Visibility="Collapsed"/>
-<Grid Grid.Row="1" Margin="0,8,0,0">
+<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+
+<Border Name="RestartRequiredBanner"
+        Grid.Row="0"
+        Background="#FEF3C7"
+        BorderBrush="#F59E0B"
+        BorderThickness="1"
+        CornerRadius="4"
+        Padding="10,7"
+        Margin="0,0,0,8"
+        Visibility="Collapsed">
+<TextBlock Name="RestartRequiredText"
+           Text="Restart required to complete one or more repairs."
+           Foreground="#92400E"
+           FontWeight="SemiBold"/>
+</Border>
+
+<ProgressBar Grid.Row="1" Name="Progress" Height="10" Minimum="0" Maximum="100" IsIndeterminate="False" Visibility="Collapsed"/>
+<Grid Grid.Row="2" Margin="0,8,0,0">
 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
 <StackPanel>
 <TextBlock Name="StatusText" Text="Ready." Foreground="#6B7280"/>
@@ -472,17 +527,19 @@ FontSize="12"/>
 
 $reader=New-Object System.Xml.XmlNodeReader $xaml
 $window=[Windows.Markup.XamlReader]::Load($reader)
-foreach($name in @('CustomerBox','JobBox','CustomerComplaintBox','TechnicianNotesBox','WorkPerformedBox','ServiceOutcomeBox','FurtherRecommendationsBox','ServiceTechnicianBox','ServiceStatusBox','ServiceCompletedBox','IncludeServiceSummaryCustomerCheck','CompleteServiceButton','ClearServiceRecordButton','ServiceRecordStatusText','ScanButton','CustomerReportButton','TechnicianReportButton','OpenReportsButton','ResultsGrid','AttentionGrid','PriorityGrid','PriorityDetailTitle','PriorityDetailStatus','PriorityDetailSummary','PriorityDetailReason','PriorityDetailAction','PriorityDetailGuidance','OpenPriorityFindingButton','OpenPriorityRepairButton','ScoreText','ScoreLabel','StatusText','Progress','ScanProgressText','ScanElapsedText','DeviceText','VersionText','HealthyCount','InfoCount','RecommendCount','WarningCount','CriticalCount','TotalCount','DetailTitle','DetailStatus','DetailSummary','DetailBody','DetailRecommendation','CopyDetailsButton','ActionGrid','RunActionsButton','ActionStatusText','ActionLogBox','ActionProgressBar','ActionProgressText','ActionElapsedText','BaselineScoreText','CurrentScoreText','ScoreChangeText','ScanCountText','ComparisonSummaryText','ComparisonGrid','SetBaselineButton','ClearHistoryButton','HeaderBorder','JobPanelBorder','StatsBorder','ContentBorder','MainTabs','DetailBorder','ComparisonHeaderBorder','LogoPlaceholder','BrandLogo','LogoFallbackText','ThemeButton','CustomerLabel','JobLabel')){Set-Variable -Name $name -Value $window.FindName($name)}
+foreach($name in @('CustomerBox','JobBox','CustomerComplaintBox','TechnicianNotesBox','WorkPerformedBox','ServiceOutcomeBox','FurtherRecommendationsBox','ServiceTechnicianBox','ServiceStatusBox','ServiceCompletedBox','IncludeServiceSummaryCustomerCheck','CompleteServiceButton','ClearServiceRecordButton','ServiceRecordStatusText','ScanButton','CustomerReportButton','TechnicianReportButton','OpenReportsButton','ResultsGrid','AttentionGrid','PriorityGrid','PriorityDetailTitle','PriorityDetailStatus','PriorityDetailSummary','PriorityDetailReason','PriorityDetailAction','PriorityDetailGuidance','OpenPriorityFindingButton','OpenPriorityRepairButton','ScoreText','ScoreLabel','StatusText','Progress','ScanProgressText','ScanElapsedText','DeviceText','VersionText','HealthyCount','InfoCount','RecommendCount','WarningCount','CriticalCount','TotalCount','DetailTitle','DetailStatus','DetailSummary','DetailBody','DetailRecommendation','CopyDetailsButton','ActionGrid','RunActionsButton','ActionStatusText','ActionLogBox','ActionProgressBar','ActionProgressText','ActionElapsedText','RestartRequiredBanner','RestartRequiredText','BaselineScoreText','CurrentScoreText','ScoreChangeText','ScanCountText','ComparisonSummaryText','ComparisonGrid','SetBaselineButton','ClearHistoryButton','HeaderBorder','JobPanelBorder','StatsBorder','ContentBorder','MainTabs','DetailBorder','ComparisonHeaderBorder','LogoPlaceholder','BrandLogo','LogoFallbackText','ThemeButton','CustomerLabel','JobLabel')){Set-Variable -Name $name -Value $window.FindName($name)}
 
 if($Customer){$CustomerBox.Text=$Customer}
 $VersionText.Text="$($Config.app.productSubtitle) | v$($Config.app.version)"
 
 $script:Theme='Light'
+$script:RestartRequired=$false
 $script:ThemeStatePath=[Environment]::ExpandEnvironmentVariables([string]$Config.ui.themeStateFile)
 
 function Get-RBZSavedTheme {
     $fallback=[string]$Config.ui.defaultTheme
-    if($fallback -notin @('Light','Dark')){$fallback='Light'}
+    if($fallback -notin @('Light','Dark')){$fallback='Light'
+=False}
 
     if(-not [bool]$Config.ui.rememberTheme){return $fallback}
 
@@ -1035,8 +1092,33 @@ $RunActionsButton.Add_Click({
 
             $ActionElapsedText.Text=((Get-Date)-$actionStarted).ToString('hh\:mm\:ss')
 
+            # RBZ080RC9A_UPDATE_OUTPUT
             $verifyText=$(if(-not [string]::IsNullOrWhiteSpace([string]$r.VerificationSummary)){"`r`nVerification: $($r.VerificationStatus) - $($r.VerificationSummary)"}else{''})
-            $ActionLogBox.AppendText("[$((Get-Date).ToString('HH:mm:ss'))] $($a.Name)`r`n$($r.Summary)$verifyText`r`n`r`n")
+
+            # RBZ080RC9C_FAILURE_DETAILS
+            # Windows Update actions always show technical details. Any failed
+            # action also shows its technical details automatically so the
+            # technician can see the real exception/result without leaving RBZ.
+            $detailText=''
+            if(-not [string]::IsNullOrWhiteSpace([string]$r.Details)){
+                if([string]$a.Category -eq 'Updates'){
+                    $detailText="`r`n`r`nWindows Update details:`r`n$($r.Details)"
+                }
+                elseif(-not [bool]$r.Success -or [string]$r.VerificationStatus -eq 'Warning'){
+                    $detailText="`r`n`r`nTechnical details:`r`n$($r.Details)"
+                }
+            }
+
+            $ActionLogBox.AppendText(
+                "[$((Get-Date).ToString('HH:mm:ss'))] $($a.Name)`r`n" +
+                "$($r.Summary)$verifyText$detailText`r`n`r`n"
+            )
+
+            if([bool]$r.RequiresRestart){
+                $script:RestartRequired=$true
+                $RestartRequiredText.Text="Restart required to complete: $($a.Name). Restart Windows, then run Verify Repairs."
+                $RestartRequiredBanner.Visibility='Visible'
+            }
             $ActionLogBox.ScrollToEnd()
             $a.Selected=$false
             Remove-Item -LiteralPath $progressPath -Force -ErrorAction SilentlyContinue
@@ -1150,6 +1232,11 @@ $OpenReportsButton.Add_Click({
 })
 
 $window.ShowDialog()|Out-Null
+
+
+
+
+
 
 
 

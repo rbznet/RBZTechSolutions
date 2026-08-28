@@ -174,17 +174,46 @@ function Get-RBZRecommendedAction {
         return [pscustomobject]$result
     }
 
+    # RBZ080RC9_CONTEXT_MAPPING
     if($category -eq 'Updates' -or $text -match 'windows update|pending update'){
-        $result.ActionName='Review and install Windows Updates'
-        $result.ActionText='Open Windows Update, review pending/failed updates, install appropriate updates, restart if required, then run another RBZ scan.'
-        $result.Guidance='The current Repair Centre does not have a dedicated Windows Update install/repair action, so this remains manual.'
+        $result.ActionType='Repair Centre'
+
+        if($text -match 'pending update|updates? available|pending updates'){
+            $result.ActionId='TriggerWindowsUpdateScan'
+            $result.ActionName='Trigger Windows Update scan'
+            $result.ActionText='Open Repair Centre and request a fresh Windows Update detection scan.'
+            $result.Guidance='RBZ submits the detection request but does not automatically download or install updates.'
+        }
+        elseif($text -match 'fail|error|recent update failures|failed update'){
+            $result.ActionId='RestartWindowsUpdateServices'
+            $result.ActionName='Restart Windows Update services'
+            $result.ActionText='Open Repair Centre and try the low-risk Windows Update service restart before deeper cache/component resets.'
+            $result.Guidance='RBZ maps update failures to the least invasive Repair Centre action first. Deeper update repair remains technician-selected.'
+        }
+        else{
+            $result.ActionId='TriggerWindowsUpdateScan'
+            $result.ActionName='Trigger Windows Update scan'
+            $result.ActionText='Open Repair Centre and request a fresh Windows Update detection scan.'
+            $result.Guidance='This is the least invasive Windows Update action and does not alter update policy.'
+        }
+
+        $result.CanOpenRepairCentre=$true
         return [pscustomobject]$result
     }
 
     if($category -eq 'Network'){
-        $result.ActionName='Investigate network configuration'
-        $result.ActionText='Use the adapter, gateway, DNS, TCP and TLS evidence to isolate local configuration, Wi-Fi/Ethernet, router, VPN, proxy or upstream problems before changing settings.'
-        $result.Guidance='RC3 does not perform blanket Winsock/IP/DNS resets because those can disrupt managed or VPN configurations.'
+        if($text -match 'dns resolution|resolver|dns cache'){
+            $result.ActionType='Repair Centre'
+            $result.ActionId='FlushDnsCache'
+            $result.ActionName='Flush DNS resolver cache'
+            $result.ActionText='Open Repair Centre and review the low-risk DNS resolver cache flush action.'
+            $result.CanOpenRepairCentre=$true
+            $result.Guidance='RBZ maps DNS-resolution findings to cache flush only. It does not automatically reset adapters, DNS servers or the full network stack.'
+        }else{
+            $result.ActionName='Investigate network configuration'
+            $result.ActionText='Use the adapter, gateway, DNS, TCP and TLS evidence to isolate local configuration, Wi-Fi/Ethernet, router, VPN, proxy or upstream problems before changing settings.'
+            $result.Guidance='The Medium-risk network stack reset remains technician-selected because it can affect VPN/custom networking and requires a restart.'
+        }
         return [pscustomobject]$result
     }
 
@@ -256,3 +285,4 @@ function Get-RBZPrioritySummary {
 }
 
 Export-ModuleMember -Function Get-RBZFindingPriority,Get-RBZRecommendedAction,Get-RBZPrioritizedFindings,Get-RBZPrioritySummary
+

@@ -1,0 +1,71 @@
+RBZ PC Health v0.8.0 RC9d
+Restart Required workflow + network reset result handling
+
+REQUIRES
+- RC9 applied
+- Compatible with RC9a/RC9b/RC9c
+
+ISSUE FOUND
+Reset Windows network stack was reported as Failed because:
+- netsh winsock reset returned exit code 1 even though Winsock was successfully reset
+- netsh int ip reset processed many entries successfully
+- one protected entry returned Access is denied
+- Windows explicitly requested a restart
+
+RC9D CHANGES
+
+1. Network reset result handling
+RBZ now distinguishes:
+- processed + restart required
+- true failure
+
+The known pattern:
+- Winsock successfully reset
+- multiple TCP/IP reset entries OK
+- one Access Denied protected entry
+- restart required
+
+is now treated as:
+Recommend / Restart Required
+not:
+Warning / Failed
+
+2. Restart-required banner
+When any Repair Centre result sets RequiresRestart=True:
+- RBZ shows an amber banner
+- message identifies the action requiring restart
+- RBZ does NOT reboot automatically
+- technician can continue work and reboot later
+
+3. Final verification
+After restart:
+- launch RBZ again
+- run Verify Repairs / Full Scan
+- confirm relevant findings are healthy
+
+FILES CHANGED
+- Modules\Service.psm1
+- RBZHealth.ps1
+
+PATCH
+Tools\Patches\Apply-RC9d.ps1
+
+APPLY
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Patches\Apply-RC9d.ps1
+
+TEST BEFORE REBOOT
+1. Apply RC9d.
+2. Launch RBZ PC Health as Administrator.
+3. Run Reset Windows network stack again.
+4. Expected:
+   - action result is NOT red Failed
+   - result indicates Restart Required
+   - amber restart-required banner appears
+5. Do not reboot until the UI result is confirmed.
+
+AFTER UI TEST
+6. Restart Windows.
+7. Relaunch RBZ PC Health.
+8. Run Verify Repairs / Full Scan.
+9. Confirm networking is healthy.
+10. Do not commit RC9 batch until this test passes.

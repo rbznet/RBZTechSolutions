@@ -1,0 +1,49 @@
+RBZ PC Health v0.8.0 RC9c
+Microsoft Store reset fix + failed-action technical output
+
+REQUIRES
+- RC9 applied
+- RC9a applied for the richer Repair Centre action output
+- Compatible with RC9b resizable Repair Centre output pane
+
+ISSUE FOUND
+Reset Microsoft Store cache failed inside RBZ, but:
+- wsreset.exe worked when run manually
+- Microsoft.WindowsStore package reported Status = Ok
+
+RC9C FIXES
+
+1. Microsoft Store cache reset
+   - Uses Start-Process for wsreset.exe rather than the native console wrapper.
+   - Waits up to 30 seconds.
+   - Does not treat missing console output as failure.
+   - Re-queries Microsoft.WindowsStore after the action.
+   - Successful verification requires the Store package to report Status = Ok.
+   - Records before/after package state and process information.
+
+2. Failed-action technical details
+   - Any failed action now prints r.Details directly in the Repair Centre output box.
+   - Windows Update actions continue to always show their detailed output.
+   - This makes future repair failures immediately diagnosable.
+
+FILES CHANGED
+- Modules\Service.psm1
+- RBZHealth.ps1
+
+PATCH
+Tools\Patches\Apply-RC9c.ps1
+
+APPLY
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Patches\Apply-RC9c.ps1
+
+TEST
+1. Apply RC9c.
+2. Launch RBZ PC Health as Administrator.
+3. Open Repair Centre.
+4. Run Reset Microsoft Store cache.
+5. Expected:
+   - action completes
+   - Verification = Healthy
+   - output reports Store Status = Ok
+6. If it fails, the Repair Centre output should now include Technical details automatically.
+7. Do not commit RC9/RC9a/RC9b/RC9c until remaining RC9 tests pass.

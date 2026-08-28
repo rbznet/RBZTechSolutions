@@ -102,6 +102,11 @@
                         "allowFlushDnsCache":  true,
                         "allowRestartPrintSpooler":  true,
                         "allowRestartWindowsUpdateServices":  true,
+                        "allowTriggerWindowsUpdateScan":  true,
+                        "allowClearWindowsUpdateDownloadCache":  true,
+                        "allowRepairWindowsUpdateComponents":  true,
+                        "allowResetNetworkStack":  true,
+                        "allowResetMicrosoftStoreCache":  true,
                         "allowRestorePoint":  true,
                         "attemptRestorePointBeforeMediumActions":  true,
                         "blockMediumActionIfRestorePointFails":  false,
@@ -198,4 +203,5 @@
                      "includeInfoInPriorityList":  false
                  }
 }
+
 
