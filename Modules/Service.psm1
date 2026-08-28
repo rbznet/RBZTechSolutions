@@ -59,6 +59,22 @@ function Get-RBZServiceActions {
             -Description 'Starts Windows Time if required and requests rediscovery/resynchronisation. It does not replace domain or NTP configuration.'))
     }
 
+    # RBZ080RC8_SAFE_REPAIRS
+    if($Config.remediation.allowFlushDnsCache){
+        $actions.Add((New-RBZAction -Id 'FlushDnsCache' -Name 'Flush DNS resolver cache' -Category 'Network' -Risk 'Low' `
+            -Description 'Clears the Windows DNS resolver cache. DNS servers and adapter configuration are not changed.'))
+    }
+
+    if($Config.remediation.allowRestartPrintSpooler){
+        $actions.Add((New-RBZAction -Id 'RestartPrintSpooler' -Name 'Restart Print Spooler' -Category 'Windows' -Risk 'Low' `
+            -Description 'Restarts the Windows Print Spooler and verifies that it returns to Running. Active print jobs may be interrupted.'))
+    }
+
+    if($Config.remediation.allowRestartWindowsUpdateServices){
+        $actions.Add((New-RBZAction -Id 'RestartWindowsUpdateServices' -Name 'Restart Windows Update services' -Category 'Updates' -Risk 'Low' `
+            -Description 'Restarts available Windows Update services without deleting update caches, history or policy.'))
+    }
+
     if($Config.remediation.allowTempCleanup){
         $actions.Add((New-RBZAction -Id 'TempCleanup' -Name 'Temporary file cleanup' -Category 'Cleanup' -Risk 'Low' `
             -Description 'Deletes accessible files from the current-user TEMP folder and Windows TEMP folder. Locked/in-use items are skipped.'))
@@ -510,85 +526,175 @@ function Invoke-RBZServiceAction {
                 $result.VerificationDetails=$r.Output
             }
 
+            # RBZ080RC8A_TIME_VERIFY
             'WindowsTimeResync' {
-                Write-RBZProgressState -ProgressPath $ProgressPath -Stage 'Windows Time resynchronisation' -Message 'Checking Windows Time service...' -Started $started -Indeterminate:$true
-
+                Write-RBZProgressState -ProgressPath $ProgressPath -Stage 'Windows Time resynchronisation' -Message 'Capturing current state...' -Started $started -Indeterminate:$true
                 $timeService=Get-Service W32Time -ErrorAction Stop
-                if($timeService.StartType -eq 'Disabled'){
-                    throw 'Windows Time service is disabled. RBZ PC Health will not change a Disabled service automatically.'
+                if($timeService.StartType -eq 'Disabled'){throw 'Windows Time is Disabled. RBZ will not change a Disabled service automatically.'}
+                if($timeService.Status -ne 'Running'){Start-Service W32Time -ErrorAction Stop;Start-Sleep -Seconds 1}
+
+                $beforeSource=Invoke-RBZNativeCommand -FilePath 'w32tm.exe' -Arguments @('/query','/source') -Stage 'Windows Time source'
+                $beforeStatus=Invoke-RBZNativeCommand -FilePath 'w32tm.exe' -Arguments @('/query','/status') -Stage 'Windows Time status'
+                $beforePeers=Invoke-RBZNativeCommand -FilePath 'w32tm.exe' -Arguments @('/query','/peers') -Stage 'Windows Time peers'
+
+                $first=Invoke-RBZNativeCommand -FilePath 'w32tm.exe' -Arguments @('/resync') -ProgressPath $ProgressPath -Stage 'Windows Time resynchronisation'
+                Start-Sleep -Seconds 2
+
+                $source='';$status='';$verified=$false;$sourceValid=$false;$statusValid=$false
+                $verificationAttempts=[System.Collections.Generic.List[string]]::new()
+
+                for($attempt=1;$attempt -le 5;$attempt++){
+                    $sourceQuery=Invoke-RBZNativeCommand -FilePath 'w32tm.exe' -Arguments @('/query','/source') -Stage 'Windows Time source'
+                    $statusQuery=Invoke-RBZNativeCommand -FilePath 'w32tm.exe' -Arguments @('/query','/status') -Stage 'Windows Time status'
+
+                    $source=[string]$sourceQuery.Output
+                    $status=[string]$statusQuery.Output
+
+                    $sourceValid=(
+                        -not [string]::IsNullOrWhiteSpace($source) -and
+                        $source -notmatch '(?i)local cmos clock|free-running system clock|unspecified'
+                    )
+
+                    $leapBad=($status -match '(?im)^\s*Leap Indicator\s*:\s*3')
+                    $stratumBad=($status -match '(?im)^\s*Stratum\s*:\s*0\b')
+                    $lastSyncBad=($status -match '(?im)^\s*Last Successful Sync Time\s*:\s*(unspecified|$)')
+
+                    $statusValid=(
+                        -not [string]::IsNullOrWhiteSpace($status) -and
+                        $status -match '(?im)^\s*Leap Indicator\s*:\s*[012]\b' -and
+                        -not $leapBad -and
+                        -not $stratumBad -and
+                        -not $lastSyncBad
+                    )
+
+                    $verified=($sourceValid -and $statusValid)
+
+                    $verificationAttempts.Add(
+                        "Attempt $attempt | SourceExit=$($sourceQuery.ExitCode) StatusExit=$($statusQuery.ExitCode) | Source='$source' | Verified=$verified"
+                    )
+
+                    if($verified){break}
+                    Start-Sleep -Seconds 2
                 }
 
-                if($timeService.Status -ne 'Running'){
-                    Start-Service W32Time -ErrorAction Stop
-                    Start-Sleep -Seconds 1
+                $fallbackOutput='Not required.'
+
+                if(-not $verified){
+                    Write-RBZProgressState -ProgressPath $ProgressPath -Stage 'Windows Time recovery' -Message 'Restarting Windows Time and rediscovering configured source...' -Started $started -Indeterminate:$true
+                    Restart-Service W32Time -Force -ErrorAction Stop
+                    Start-Sleep -Seconds 2
+                    $fallback=Invoke-RBZNativeCommand -FilePath 'w32tm.exe' -Arguments @('/resync','/rediscover') -ProgressPath $ProgressPath -Stage 'Windows Time rediscovery'
+                    $fallbackOutput=$fallback.Output
+                    Start-Sleep -Seconds 2
+                    for($attempt=1;$attempt -le 5;$attempt++){
+                        $sourceQuery=Invoke-RBZNativeCommand -FilePath 'w32tm.exe' -Arguments @('/query','/source') -Stage 'Windows Time source'
+                        $statusQuery=Invoke-RBZNativeCommand -FilePath 'w32tm.exe' -Arguments @('/query','/status') -Stage 'Windows Time status'
+
+                        $source=[string]$sourceQuery.Output
+                        $status=[string]$statusQuery.Output
+
+                        $sourceValid=(
+                            -not [string]::IsNullOrWhiteSpace($source) -and
+                            $source -notmatch '(?i)local cmos clock|free-running system clock|unspecified'
+                        )
+
+                        $leapBad=($status -match '(?im)^\s*Leap Indicator\s*:\s*3')
+                        $stratumBad=($status -match '(?im)^\s*Stratum\s*:\s*0\b')
+                        $lastSyncBad=($status -match '(?im)^\s*Last Successful Sync Time\s*:\s*(unspecified|$)')
+
+                        $statusValid=(
+                            -not [string]::IsNullOrWhiteSpace($status) -and
+                            $status -match '(?im)^\s*Leap Indicator\s*:\s*[012]\b' -and
+                            -not $leapBad -and
+                            -not $stratumBad -and
+                            -not $lastSyncBad
+                        )
+
+                        $verified=($sourceValid -and $statusValid)
+
+                        $verificationAttempts.Add(
+                            "Fallback attempt $attempt | SourceExit=$($sourceQuery.ExitCode) StatusExit=$($statusQuery.ExitCode) | Source='$source' | Verified=$verified"
+                        )
+
+                        if($verified){break}
+                        Start-Sleep -Seconds 2
+                    }
                 }
-
-                $r=Invoke-RBZNativeCommand `
-                    -FilePath 'w32tm.exe' `
-                    -Arguments @('/resync','/rediscover') `
-                    -ProgressPath $ProgressPath `
-                    -Stage 'Windows Time resynchronisation'
-
-                Write-RBZProgressState -ProgressPath $ProgressPath -Stage 'Verifying Windows Time' -Message 'Reading time source and synchronisation status...' -Started $started -Indeterminate:$true
-
-                $sourceQuery=Invoke-RBZNativeCommand -FilePath 'w32tm.exe' -Arguments @('/query','/source') -Stage 'Windows Time source'
-                $statusQuery=Invoke-RBZNativeCommand -FilePath 'w32tm.exe' -Arguments @('/query','/status') -Stage 'Windows Time status'
-
-                $source=[string]$sourceQuery.Output
-                $status=[string]$statusQuery.Output
-
-                $sourceValid=(
-                    $sourceQuery.ExitCode -eq 0 -and
-                    -not [string]::IsNullOrWhiteSpace($source) -and
-                    $source -notmatch '(?i)local cmos clock|free-running system clock'
-                )
-
-                $statusValid=(
-                    $statusQuery.ExitCode -eq 0 -and
-                    -not [string]::IsNullOrWhiteSpace($status) -and
-                    $status -notmatch '(?im)^\s*Leap Indicator:\s*3'
-                )
-
-                $resyncCommandSucceeded=($r.ExitCode -eq 0)
-                $verified=($resyncCommandSucceeded -and $sourceValid -and $statusValid)
 
                 $result.Success=$verified
-
-                if($verified){
-                    $result.Summary='Windows Time resynchronisation completed and was verified.'
-                    $result.VerificationStatus='Healthy'
-                    $result.VerificationSummary="Windows Time is synchronised. Source: $source"
-                }
-                elseif(-not $resyncCommandSucceeded){
-                    $result.Summary="Windows Time resynchronisation failed with exit code $($r.ExitCode)."
-                    $result.VerificationStatus='Warning'
-                    $result.VerificationSummary="Windows Time resynchronisation command failed. Source after attempt: $source"
-                }
-                else{
-                    $result.Summary='Windows Time resynchronisation command completed, but synchronisation could not be verified.'
-                    $result.VerificationStatus='Warning'
-                    $result.VerificationSummary="Windows Time remains unverified after resync. Source: $source"
-                }
-
-                $result.Details=@"
-Resync exit code: $($r.ExitCode)
-Resync output:
-$($r.Output)
-
-Source query exit code: $($sourceQuery.ExitCode)
-Source:
-$source
-
-Status query exit code: $($statusQuery.ExitCode)
-Status:
-$status
-"@
-
+                $result.Summary=$(if($verified){'Windows Time was resynchronised and verified.'}else{'Windows Time repair completed, but synchronisation could not be verified.'})
                 $result.VerificationCategory='System'
                 $result.VerificationCheck='Windows Time synchronisation'
+                $result.VerificationStatus=$(if($verified){'Healthy'}else{'Warning'})
+                $result.VerificationSummary=$(if($verified){"Windows Time is synchronised. Source: $source"}else{"Windows Time remains unsynchronised or unverified. Source: $source"})
+                $result.Details=@"
+Before source:
+$($beforeSource.Output)
+
+Before status:
+$($beforeStatus.Output)
+
+Peer state:
+$($beforePeers.Output)
+
+Initial resync:
+$($first.Output)
+
+Fallback:
+$fallbackOutput
+
+After source:
+$source
+
+After status:
+$status
+
+Verification attempts:
+$($verificationAttempts -join "`n")
+
+RBZ did not change the NTP server, registry settings or policy.
+"@
                 $result.VerificationDetails=$result.Details
             }
+            'FlushDnsCache' {
+                $r=Invoke-RBZNativeCommand -FilePath 'ipconfig.exe' -Arguments @('/flushdns') -ProgressPath $ProgressPath -Stage 'Flush DNS resolver cache'
+                $ok=($r.ExitCode -eq 0 -and $r.Output -match '(?i)successfully flushed|dns resolver cache')
+                $result.Success=$ok
+                $result.Summary=$(if($ok){'Windows DNS resolver cache was flushed successfully.'}else{'DNS cache flush could not be verified.'})
+                $result.Details="Exit code: $($r.ExitCode)`n$($r.Output)"
+                $result.VerificationCategory='Network';$result.VerificationCheck='DNS resolver cache'
+                $result.VerificationStatus=$(if($ok){'Healthy'}else{'Warning'});$result.VerificationSummary=$result.Summary;$result.VerificationDetails=$result.Details
+            }
 
+            'RestartPrintSpooler' {
+                $svc=Get-Service Spooler -ErrorAction Stop;$before=[string]$svc.Status
+                Restart-Service Spooler -Force -ErrorAction Stop
+                $svc.WaitForStatus('Running',[TimeSpan]::FromSeconds(15));$svc.Refresh()
+                $ok=($svc.Status -eq 'Running')
+                $result.Success=$ok;$result.Summary=$(if($ok){'Print Spooler restarted and returned to Running.'}else{'Print Spooler restart could not be verified.'})
+                $result.Details="Before: $before`nAfter: $($svc.Status)"
+                $result.VerificationCategory='Windows';$result.VerificationCheck='Print Spooler'
+                $result.VerificationStatus=$(if($ok){'Healthy'}else{'Warning'});$result.VerificationSummary=$result.Summary;$result.VerificationDetails=$result.Details
+            }
+
+            'RestartWindowsUpdateServices' {
+                $names=@('wuauserv','UsoSvc');$lines=[System.Collections.Generic.List[string]]::new();$ok=$true;$seen=0
+                foreach($n in $names){
+                    $svc=Get-Service $n -ErrorAction SilentlyContinue
+                    if(-not $svc){$lines.Add("$n : not installed");continue}
+                    $before=[string]$svc.Status
+                    try{
+                        if($svc.Status -eq 'Running'){Restart-Service $n -Force -ErrorAction Stop}else{Start-Service $n -ErrorAction Stop}
+                        Start-Sleep -Milliseconds 500;$svc=Get-Service $n -ErrorAction Stop;$after=[string]$svc.Status;$seen++
+                        if($after -ne 'Running'){$ok=$false};$lines.Add("$n : $before -> $after")
+                    }catch{$ok=$false;$lines.Add("$n : $before -> ERROR: $($_.Exception.Message)")}
+                }
+                if($seen -eq 0){$ok=$false}
+                $result.Success=$ok;$result.Summary=$(if($ok){'Windows Update services were restarted and verified.'}else{'One or more Windows Update services could not be restarted or verified.'})
+                $result.Details=($lines -join "`n")
+                $result.VerificationCategory='Updates';$result.VerificationCheck='Windows Update services'
+                $result.VerificationStatus=$(if($ok){'Healthy'}else{'Warning'});$result.VerificationSummary=$result.Summary;$result.VerificationDetails=$result.Details
+            }
             'TempCleanup' {
                 Write-RBZProgressState -ProgressPath $ProgressPath -Stage 'Temporary file cleanup' -Message 'Removing accessible temporary files...' -Started $started -Indeterminate:$true
                 $targets=@()
@@ -636,4 +742,6 @@ $status
 }
 
 Export-ModuleMember -Function Get-RBZServiceActions,Invoke-RBZServiceAction,New-RBZRestorePoint,Get-RBZSystemProtectionState,Enable-RBZSystemProtection
+
+
 

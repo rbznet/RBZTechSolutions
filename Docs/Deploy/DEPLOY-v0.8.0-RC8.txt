@@ -1,0 +1,34 @@
+RBZ PC Health v0.8.0 RC8 - Repair Centre expansion
+
+Patch: Tools\Patches\Apply-RC8.ps1
+Changes: Modules\Service.psm1 and Config\settings.json
+
+Adds:
+- Flush DNS resolver cache
+- Restart Print Spooler, verified Running
+- Restart Windows Update services, without deleting update caches/history
+- Enhanced Windows Time: capture before state -> normal resync -> verify -> controlled service restart + rediscover fallback -> verify
+
+Safety:
+- Does not change NTP server, registry or policy.
+- Does not delete SoftwareDistribution/Catroot2.
+- Does not reset Windows Update history.
+- Does not restart network adapters or reset Winsock/IP stack, because those can terminate RDP/remote sessions.
+
+Apply:
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Patches\Apply-RC8.ps1
+
+Test on dev PC BEFORE commit:
+1. Launch RBZ PC Health as Administrator.
+2. Confirm the three new Repair Centre actions appear.
+3. If Windows Time is Warning, run only Windows Time resynchronisation first.
+4. Review Action Log for before/after source/status.
+5. Run Verify Repairs and confirm Windows Time becomes Healthy.
+6. Test Flush DNS resolver cache.
+7. Test Print Spooler when no print job is active.
+8. Test Windows Update services.
+9. Run a Full Scan and inspect Before/After.
+10. Do not commit until tests pass.
+
+After dev-PC approval and commit/push, test the same committed RC on the gaming PC using:
+irm https://raw.githubusercontent.com/rbznet/RBZTechSolutions/main/bootstrap-rc.ps1 | iex

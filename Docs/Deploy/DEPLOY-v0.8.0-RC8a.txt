@@ -1,0 +1,19 @@
+RBZ PC Health v0.8.0 RC8a - Windows Time verification fix
+
+Fixes the RC8 false-negative verification where Windows Time had actually
+synchronised successfully but RBZ reported that verification failed.
+
+Changes:
+- Polls up to five times after resync.
+- Validates the returned Windows Time state directly.
+- Requires:
+  - external/non-CMOS source
+  - Leap Indicator not 3
+  - Stratum not 0
+  - Last Successful Sync Time not unspecified
+- Applies the same checks after restart/rediscover fallback.
+- Records verification attempts in the action details.
+- No other Repair Centre actions changed.
+
+Apply:
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Patches\Apply-RC8a.ps1

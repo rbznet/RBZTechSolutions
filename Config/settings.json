@@ -99,6 +99,9 @@
                         "allowSfcScannow":  true,
                         "allowCheckDiskScan":  true,
                         "allowWindowsTimeResync":  true,
+                        "allowFlushDnsCache":  true,
+                        "allowRestartPrintSpooler":  true,
+                        "allowRestartWindowsUpdateServices":  true,
                         "allowRestorePoint":  true,
                         "attemptRestorePointBeforeMediumActions":  true,
                         "blockMediumActionIfRestorePointFails":  false,
@@ -195,3 +198,4 @@
                      "includeInfoInPriorityList":  false
                  }
 }
+
