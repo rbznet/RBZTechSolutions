@@ -1,4 +1,33 @@
-﻿# RBZ PC Health RC bootstrapper
+﻿$ErrorActionPreference='Stop'
+
+$repoRoot=Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$bootstrapPath=Join-Path $repoRoot 'bootstrap-rc.ps1'
+$settingsPath=Join-Path $repoRoot 'Config\settings.json'
+
+if(-not(Test-Path -LiteralPath $bootstrapPath)){throw "Required file not found: $bootstrapPath"}
+if(-not(Test-Path -LiteralPath $settingsPath)){throw "Required file not found: $settingsPath"}
+
+$current=Get-Content -LiteralPath $bootstrapPath -Raw
+if($current -match 'RC11: every run gets its own narrowly-scoped temporary session folder'){
+    Write-Host 'RBZ PC Health v0.8.0 RC11 is already applied.' -ForegroundColor Yellow
+    exit 0
+}
+
+$required=@(
+    '$Owner = ''rbznet''',
+    '$Repo = ''RBZTechSolutions''',
+    '$Branch = ''main''',
+    'RBZHealth.ps1',
+    'RBZ-PC-Health-RC'
+)
+foreach($fragment in $required){
+    if(-not $current.Contains($fragment)){
+        throw "RC11 baseline validation failed. Missing expected RC bootstrap capability: $fragment"
+    }
+}
+
+$replacement=@'
+# RBZ PC Health RC bootstrapper
 # Test channel: downloads the current GitHub main branch and launches RBZ PC Health.
 # Stable bootstrap.ps1 remains release-based.
 
@@ -171,3 +200,37 @@ finally {
     }
     catch {}
 }
+'@
+
+Set-Content -LiteralPath $bootstrapPath -Value $replacement -Encoding UTF8
+
+$settings=Get-Content -LiteralPath $settingsPath -Raw
+if($settings -match '"cleanupAfterExit"\s*:\s*false'){
+    $updated=[regex]::Replace($settings,'("cleanupAfterExit"\s*:\s*)false','$1true',1)
+    Set-Content -LiteralPath $settingsPath -Value $updated -Encoding UTF8
+}elseif($settings -notmatch '"cleanupAfterExit"\s*:\s*true'){
+    throw 'RC11 could not locate bootstrap.cleanupAfterExit in Config\settings.json.'
+}
+
+$tokens=$null
+$errors=$null
+[System.Management.Automation.Language.Parser]::ParseFile(
+    $bootstrapPath,[ref]$tokens,[ref]$errors
+) | Out-Null
+
+if($errors.Count -gt 0){
+    $msg=($errors | ForEach-Object {"Line $($_.Extent.StartLineNumber): $($_.Message)"}) -join "`n"
+    throw "bootstrap-rc.ps1 parser check failed after RC11:`n$msg"
+}
+
+try{
+    Get-Content -LiteralPath $settingsPath -Raw | ConvertFrom-Json | Out-Null
+}catch{
+    throw "Config\settings.json validation failed after RC11: $($_.Exception.Message)"
+}
+
+Write-Host 'RBZ PC Health v0.8.0 RC11 applied.' -ForegroundColor Green
+Write-Host 'RC bootstrap now uses unique TEMP sessions and cleans them after RBZ exits.' -ForegroundColor Cyan
+Write-Host 'Generated RC reports are preserved under Documents\RBZ PC Health Reports\RC.' -ForegroundColor Cyan
+Write-Host 'bootstrap-rc.ps1 passed the PowerShell parser check.' -ForegroundColor Cyan
+Write-Host 'Config\settings.json passed JSON validation.' -ForegroundColor Cyan

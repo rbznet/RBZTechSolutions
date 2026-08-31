@@ -37,7 +37,7 @@
                       "packageAssetPattern":  "RBZ-PC-Health-*.zip",
                       "hashAssetPattern":  "RBZ-PC-Health-*.sha256",
                       "entryPoint":  "RBZHealth.ps1",
-                      "cleanupAfterExit":  false
+                      "cleanupAfterExit":  true
                   },
     "scan":  {
                  "batteryReport":  true,
@@ -203,5 +203,6 @@
                      "includeInfoInPriorityList":  false
                  }
 }
+
 
 
