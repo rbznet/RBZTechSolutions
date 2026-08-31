@@ -535,6 +535,72 @@ $VersionText.Text="$($Config.app.productSubtitle) | v$($Config.app.version)"
 $script:Theme='Light'
 $script:RestartRequired=$false
 $script:ThemeStatePath=[Environment]::ExpandEnvironmentVariables([string]$Config.ui.themeStateFile)
+# RBZ080RC10_PERSISTENT_REPAIR_STATE
+$script:RepairStateRoot=Join-Path $env:ProgramData 'RBZ Tech Solutions\RBZ PC Health'
+$script:RepairStatePath=Join-Path $script:RepairStateRoot 'pending-repair.json'
+$script:PendingRepairState=$null
+
+function Save-RBZPendingRepairState {
+    param(
+        [Parameter(Mandatory)]$Action,
+        [Parameter(Mandatory)]$Result
+    )
+
+    try{
+        if(-not(Test-Path -LiteralPath $script:RepairStateRoot)){
+            New-Item -ItemType Directory -Path $script:RepairStateRoot -Force | Out-Null
+        }
+
+        $payload=[ordered]@{
+            SchemaVersion=1
+            Pending=$true
+            ComputerName=[string]$env:COMPUTERNAME
+            ActionId=[string]$Action.Id
+            ActionName=[string]$Action.Name
+            Category=[string]$Action.Category
+            PerformedAt=(Get-Date).ToString('o')
+            RequiresRestart=[bool]$Result.RequiresRestart
+            Summary=[string]$Result.Summary
+            VerificationCategory=[string]$Result.VerificationCategory
+            VerificationCheck=[string]$Result.VerificationCheck
+            VerificationStatus=[string]$Result.VerificationStatus
+            VerificationSummary=[string]$Result.VerificationSummary
+        }
+
+        $payload |
+            ConvertTo-Json -Depth 5 |
+            Set-Content -LiteralPath $script:RepairStatePath -Encoding UTF8 -Force
+
+        $script:PendingRepairState=[pscustomobject]$payload
+        return $true
+    }
+    catch{
+        return $false
+    }
+}
+
+function Get-RBZPendingRepairState {
+    try{
+        if(-not(Test-Path -LiteralPath $script:RepairStatePath)){return $null}
+
+        $state=Get-Content -LiteralPath $script:RepairStatePath -Raw -ErrorAction Stop |
+            ConvertFrom-Json -ErrorAction Stop
+
+        if(-not [bool]$state.Pending){return $null}
+        if([string]$state.ComputerName -ne [string]$env:COMPUTERNAME){return $null}
+        return $state
+    }
+    catch{
+        return $null
+    }
+}
+
+function Clear-RBZPendingRepairState {
+    try{
+        Remove-Item -LiteralPath $script:RepairStatePath -Force -ErrorAction SilentlyContinue
+    }catch{}
+    $script:PendingRepairState=$null
+}
 
 function Get-RBZSavedTheme {
     $fallback=[string]$Config.ui.defaultTheme
@@ -861,6 +927,12 @@ $ScanButton.Add_Click({
             $StatusText.Text="Verification scan complete: $($script:Findings.Count) checks. Review Before / After and Technician Priorities."
             $script:RepairContextFinding=$null
             $script:RepairContextAction=$null
+            if($script:PendingRepairState){
+                Clear-RBZPendingRepairState
+                $script:RestartRequired=$false
+                $RestartRequiredBanner.Visibility='Collapsed'
+                $ActionStatusText.Text='Post-restart repair verification completed. Pending repair state cleared.'
+            }
         }else{
             $StatusText.Text="Scan complete: $($script:Findings.Count) checks."
         }
@@ -1118,7 +1190,16 @@ $RunActionsButton.Add_Click({
                 $script:RestartRequired=$true
                 $RestartRequiredText.Text="Restart required to complete: $($a.Name). Restart Windows, then run Verify Repairs."
                 $RestartRequiredBanner.Visibility='Visible'
-            }
+                            if(Save-RBZPendingRepairState -Action $a -Result $r){
+                    $ActionLogBox.AppendText(
+                        "Pending repair verification saved for next launch.`r`n" +
+                        "State file: $script:RepairStatePath`r`n`r`n"
+                    )
+                }else{
+                    $ActionLogBox.AppendText(
+                        "WARNING: Pending repair state could not be saved for post-restart verification.`r`n`r`n"
+                    )
+                }}
             $ActionLogBox.ScrollToEnd()
             $a.Selected=$false
             Remove-Item -LiteralPath $progressPath -Force -ErrorAction SilentlyContinue
@@ -1231,7 +1312,24 @@ $OpenReportsButton.Add_Click({
     }
 })
 
+$script:PendingRepairState=Get-RBZPendingRepairState
+if($script:PendingRepairState){
+    $script:RepairVerificationPending=$true
+    $script:RestartRequired=$true
+    $ScanButton.Content='Verify Repairs'
+
+    $performed=[string]$script:PendingRepairState.PerformedAt
+    try{
+        $performed=([datetime]$script:PendingRepairState.PerformedAt).ToString('dd MMM yyyy HH:mm')
+    }catch{}
+
+    $RestartRequiredText.Text="Pending repair verification: $($script:PendingRepairState.ActionName) was performed $performed. Run Verify Repairs."
+    $RestartRequiredBanner.Visibility='Visible'
+    $ActionStatusText.Text="Previous restart-required repair detected: $($script:PendingRepairState.ActionName). Run Verify Repairs."
+    $StatusText.Text='Pending post-restart repair verification detected.'
+}
 $window.ShowDialog()|Out-Null
+
 
 
 

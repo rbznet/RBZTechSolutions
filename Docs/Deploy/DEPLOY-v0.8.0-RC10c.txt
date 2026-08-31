@@ -1,0 +1,29 @@
+RBZ PC Health v0.8.0 RC10c
+
+RC10c fixes the patching mechanism itself.
+
+WHY RC10/RC10a/RC10b FAILED
+The earlier patch scripts used exact multiline string matching. The GitHub source
+was read with LF line endings while the user's local Windows checkout uses CRLF,
+so exact .Contains() / .Replace() multiline matches did not find the code even
+though it was present.
+
+RC10c uses regex and single-line insertion anchors, making the patch independent
+of CRLF/LF line endings and XAML quote formatting.
+
+The previous failed attempts stopped before Set-Content, so they did not modify
+RBZHealth.ps1.
+
+FEATURE
+Persistent post-restart repair verification:
+%ProgramData%\RBZ Tech Solutions\RBZ PC Health\pending-repair.json
+
+Apply:
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Patches\Apply-RC10.ps1
+
+Expected:
+RBZ PC Health v0.8.0 RC10c applied.
+Persistent post-restart repair verification has been added.
+RBZHealth.ps1 passed the PowerShell parser check.
+
+Do not commit until the full restart workflow is tested.
