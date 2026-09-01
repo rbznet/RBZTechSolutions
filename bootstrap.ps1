@@ -1,4 +1,5 @@
-﻿# RBZ PC Health bootstrapper
+# RBZ PC Health bootstrapper
+# RBZ080RC13D_UTF8_NO_BOM
 # RBZ080RC13_STABLE_SESSION_CLEANUP
 # Stable channel remains release-based and SHA256 verified.
 # RBZ080RC13C_IEX_SAFE_STABLE_BOOTSTRAP

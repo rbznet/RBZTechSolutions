@@ -1,0 +1,36 @@
+RBZ PC Health v0.8.0 RC13d
+UTF-8 BOM removal for public irm | iex bootstrap
+
+ISSUE
+After RC13c was pushed, the public command:
+
+irm https://raw.githubusercontent.com/rbznet/RBZTechSolutions/main/bootstrap.ps1 | iex
+
+failed with:
+
+The term '﻿#' is not recognized ...
+
+CAUSE
+bootstrap.ps1 was stored with a UTF-8 BOM. When raw GitHub content is piped
+directly into Invoke-Expression under the current Windows PowerShell path, the
+leading BOM character is preserved before the first '#' comment and is parsed
+as part of a command token.
+
+FIX
+RC13d rewrites bootstrap.ps1 as UTF-8 without BOM and verifies the first
+three bytes are not EF BB BF.
+
+APPLY
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Patches\Apply-RC13d.ps1
+
+LOCAL IEX TEST BEFORE COMMIT
+Get-Content .\bootstrap.ps1 -Raw | Invoke-Expression
+
+OPTIONAL BYTE CHECK
+$bytes=[IO.File]::ReadAllBytes((Resolve-Path .\bootstrap.ps1))
+'{0:X2} {1:X2} {2:X2}' -f $bytes[0],$bytes[1],$bytes[2]
+
+Expected first bytes for "# R":
+23 20 52
+
+After local IEX passes, commit/push RC13d and retest the exact public command.
