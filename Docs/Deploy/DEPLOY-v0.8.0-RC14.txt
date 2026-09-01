@@ -1,0 +1,60 @@
+RBZ PC Health v0.8.0 RC14
+Final release-readiness pass
+
+CHANGES
+
+1. Fix latent Get-RBZSavedTheme fallback defect
+The fallback block contained a stray:
+=False
+
+It was normally dormant because the configured theme is valid, but it could
+break if defaultTheme were ever invalid. RC14 removes the stray statement.
+
+2. Harden build-release.ps1
+Before packaging it now verifies:
+- Config\settings.json exists and parses as JSON
+- Config app.version exactly matches the requested -Version
+- required runtime items exist
+- RBZHealth.ps1 and all runtime .ps1/.psm1 files pass the PowerShell parser
+
+3. Runtime-only release ZIP
+The customer release ZIP now contains only:
+- RBZHealth.ps1
+- Config\
+- Modules\
+- Assets\
+- Reports\
+
+It intentionally excludes:
+- Tools\Patches
+- Docs\Deploy
+- bootstrap.ps1 / bootstrap-rc.ps1
+- build-release.ps1
+- source-control metadata
+
+APPLY
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Patches\Apply-RC14.ps1
+
+SMOKE TEST APP
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\RBZHealth.ps1
+
+BUILD v0.8.0
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build-release.ps1 -Version 0.8.0
+
+EXPECTED ARTIFACTS
+dist\RBZ-PC-Health-0.8.0.zip
+dist\RBZ-PC-Health-0.8.0.sha256
+
+PACKAGE CONTENT CHECK
+Expand-Archive .\dist\RBZ-PC-Health-0.8.0.zip "$env:TEMP\RBZ-v080-check" -Force
+Get-ChildItem "$env:TEMP\RBZ-v080-check" -Force
+Remove-Item "$env:TEMP\RBZ-v080-check" -Recurse -Force
+
+Expected top-level runtime items:
+Assets
+Config
+Modules
+Reports
+RBZHealth.ps1
+
+Do not publish the GitHub release until the RC14 app smoke test and build both pass.

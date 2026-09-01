@@ -646,8 +646,8 @@ function Clear-RBZPendingRepairState {
 
 function Get-RBZSavedTheme {
     $fallback=[string]$Config.ui.defaultTheme
-    if($fallback -notin @('Light','Dark')){$fallback='Light'
-=False}
+    # RBZ080RC14_THEME_FALLBACK_FIX
+    if($fallback -notin @('Light','Dark')){$fallback='Light'}
 
     if(-not [bool]$Config.ui.rememberTheme){return $fallback}
 
@@ -1405,6 +1405,7 @@ if($script:PendingRepairState){
     }
 }
 $window.ShowDialog()|Out-Null
+
 
 
 
