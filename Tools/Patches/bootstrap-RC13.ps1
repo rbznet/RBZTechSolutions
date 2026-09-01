@@ -53,31 +53,7 @@ function Remove-RBZAbandonedSessions {
 }
 
 Assert-RBZAdministrator
-# RBZ080RC13B_NORMALISE_CONFIG_CONTENT
-# Windows PowerShell 5.1 can expose Invoke-WebRequest.Content as either text
-# or a byte array depending on the response/content handling. Normalise it
-# to one UTF-8 string before handing it to ConvertFrom-Json.
-$configResponse=Invoke-WebRequest -Uri $ConfigUrl -UseBasicParsing
-
-if($configResponse.Content -is [byte[]]){
-    $configText=[Text.Encoding]::UTF8.GetString([byte[]]$configResponse.Content)
-}
-else{
-    $configText=[string]$configResponse.Content
-}
-
-$configText=$configText.TrimStart([char]0xFEFF)
-
-if([string]::IsNullOrWhiteSpace($configText)){
-    throw "RBZ configuration download returned empty content: $ConfigUrl"
-}
-
-try{
-    $config=$configText | ConvertFrom-Json -ErrorAction Stop
-}
-catch{
-    throw "RBZ configuration could not be parsed as JSON: $($_.Exception.Message)"
-}
+$config=Invoke-RestMethod -Uri $ConfigUrl -UseBasicParsing
 $headers=@{'User-Agent'='RBZ-PC-Health-Bootstrap'}
 $release=Invoke-RestMethod -Uri $config.github.releaseApi -Headers $headers
 $zipAsset=$release.assets|Where-Object name -like $config.bootstrap.packageAssetPattern|Select-Object -First 1
@@ -135,5 +111,3 @@ finally {
         } catch {}
     }
 }
-
-
