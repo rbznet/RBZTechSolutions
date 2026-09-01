@@ -1,0 +1,45 @@
+RBZ PC Health v0.8.0 RC13c
+Stable bootstrap IEX compatibility fix
+
+ISSUE
+The public customer command:
+
+irm https://raw.githubusercontent.com/rbznet/RBZTechSolutions/main/bootstrap.ps1 | iex
+
+failed with:
+
+Invoke-Expression: Unexpected attribute 'CmdletBinding'.
+
+CAUSE
+The stable bootstrap still began with a script-level:
+
+[CmdletBinding()]
+param(...)
+
+That pattern works when bootstrap.ps1 is executed with -File, but fails when
+the downloaded script text is piped into Invoke-Expression in this usage.
+
+FIX
+RC13c removes the script-level CmdletBinding/param block and assigns the
+ConfigUrl directly:
+
+$ConfigUrl='https://raw.githubusercontent.com/rbznet/RBZTechSolutions/main/Config/settings.json'
+
+All RC13/RC13a/RC13b behaviour remains unchanged:
+- release-based stable channel
+- SHA256 verification
+- isolated Stable TEMP GUID session
+- safe marked-session cleanup
+- report preservation
+- explicit JSON response normalisation and parsing
+- Windows PowerShell 5.1 launch
+
+APPLY
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Patches\Apply-RC13c.ps1
+
+LOCAL IEX TEST BEFORE COMMIT
+Get-Content .\bootstrap.ps1 -Raw | Invoke-Expression
+
+If that opens RBZ normally, commit and push RC13c, then test the exact public command:
+
+irm https://raw.githubusercontent.com/rbznet/RBZTechSolutions/main/bootstrap.ps1 | iex

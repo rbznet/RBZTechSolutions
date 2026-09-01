@@ -1,8 +1,10 @@
 ﻿# RBZ PC Health bootstrapper
 # RBZ080RC13_STABLE_SESSION_CLEANUP
 # Stable channel remains release-based and SHA256 verified.
-[CmdletBinding()]
-param([string]$ConfigUrl='https://raw.githubusercontent.com/rbznet/RBZTechSolutions/main/Config/settings.json')
+# RBZ080RC13C_IEX_SAFE_STABLE_BOOTSTRAP
+# Keep the stable bootstrap compatible with:
+# irm https://raw.githubusercontent.com/rbznet/RBZTechSolutions/main/bootstrap.ps1 | iex
+$ConfigUrl='https://raw.githubusercontent.com/rbznet/RBZTechSolutions/main/Config/settings.json'
 $ErrorActionPreference='Stop'
 [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12
 
@@ -135,5 +137,6 @@ finally {
         } catch {}
     }
 }
+
 
 
