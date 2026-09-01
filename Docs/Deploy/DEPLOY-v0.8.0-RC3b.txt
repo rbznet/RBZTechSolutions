@@ -1,9 +1,0 @@
-RBZ PC Health v0.8.0 RC3b
-
-Fixes RC3a parser error caused by:
-$PriorityDetailAction$PriorityDetailAction.Text
-
-Run:
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Apply-RC3b.ps1
-
-The fixer also runs a PowerShell parser check against RBZHealth.ps1 before reporting success.
