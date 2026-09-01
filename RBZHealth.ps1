@@ -540,6 +540,46 @@ $script:RepairStateRoot=Join-Path $env:ProgramData 'RBZ Tech Solutions\RBZ PC He
 $script:RepairStatePath=Join-Path $script:RepairStateRoot 'pending-repair.json'
 $script:PendingRepairState=$null
 
+# RBZ080RC12_BOOT_AWARE_REPAIR_STATE
+function Get-RBZCurrentBootTime {
+    try{
+        $os=Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
+        if($os.LastBootUpTime){
+            return ([datetime]$os.LastBootUpTime)
+        }
+    }catch{}
+
+    try{
+        $os=Get-WmiObject -Class Win32_OperatingSystem -ErrorAction Stop
+        if($os.LastBootUpTime){
+            return ([Management.ManagementDateTimeConverter]::ToDateTime([string]$os.LastBootUpTime))
+        }
+    }catch{}
+
+    return $null
+}
+
+function Test-RBZRestartOccurred {
+    param([Parameter(Mandatory)]$State)
+
+    if(-not($State.PSObject.Properties.Name -contains 'BootTimeAtRepair')){
+        return $null
+    }
+
+    if([string]::IsNullOrWhiteSpace([string]$State.BootTimeAtRepair)){
+        return $null
+    }
+
+    try{
+        $bootAtRepair=[datetime]$State.BootTimeAtRepair
+        $currentBoot=Get-RBZCurrentBootTime
+        if(-not $currentBoot){return $null}
+
+        return ($currentBoot -gt $bootAtRepair.AddSeconds(2))
+    }catch{
+        return $null
+    }
+}
 function Save-RBZPendingRepairState {
     param(
         [Parameter(Mandatory)]$Action,
@@ -550,15 +590,17 @@ function Save-RBZPendingRepairState {
         if(-not(Test-Path -LiteralPath $script:RepairStateRoot)){
             New-Item -ItemType Directory -Path $script:RepairStateRoot -Force | Out-Null
         }
+        $bootTimeAtRepair=Get-RBZCurrentBootTime
 
         $payload=[ordered]@{
-            SchemaVersion=1
+            SchemaVersion=2
             Pending=$true
             ComputerName=[string]$env:COMPUTERNAME
             ActionId=[string]$Action.Id
             ActionName=[string]$Action.Name
             Category=[string]$Action.Category
             PerformedAt=(Get-Date).ToString('o')
+            BootTimeAtRepair=if($bootTimeAtRepair){$bootTimeAtRepair.ToString('o')}else{$null}
             RequiresRestart=[bool]$Result.RequiresRestart
             Summary=[string]$Result.Summary
             VerificationCategory=[string]$Result.VerificationCategory
@@ -1205,12 +1247,20 @@ $RunActionsButton.Add_Click({
             Remove-Item -LiteralPath $progressPath -Force -ErrorAction SilentlyContinue
             Update-RBZComparisonView
         }
-
         $ActionGrid.Items.Refresh()
-        $script:RepairVerificationPending=$true
-        $ScanButton.Content='Verify Repairs'
-        $ActionStatusText.Text='Selected actions completed. Verification required: run a Full Scan to confirm whether the original diagnostic finding changed.'
-        $StatusText.Text='Service actions completed. Verification is pending; use Verify Repairs.'
+
+        if($script:RestartRequired){
+            $script:RepairVerificationPending=$false
+            $ScanButton.Content='Restart Required'
+            $ScanButton.IsEnabled=$false
+            $ActionStatusText.Text='Selected actions completed. Restart Windows before verification can run.'
+            $StatusText.Text='Service actions completed. Restart Windows to complete the repair; verification will be available after reboot.'
+        }else{
+            $script:RepairVerificationPending=$true
+            $ScanButton.Content='Verify Repairs'
+            $ActionStatusText.Text='Selected actions completed. Verification required: run a Full Scan to confirm whether the original diagnostic finding changed.'
+            $StatusText.Text='Service actions completed. Verification is pending; use Verify Repairs.'
+        }
     }
     catch{
         [System.Windows.MessageBox]::Show($_.Exception.Message,'RBZ PC Health - Repair Centre')|Out-Null
@@ -1219,7 +1269,11 @@ $RunActionsButton.Add_Click({
     finally{
         $window.Cursor=$null
         $RunActionsButton.IsEnabled=$true
-        $ScanButton.IsEnabled=$true
+        if($script:RestartRequired){
+            $ScanButton.IsEnabled=$false
+        }else{
+            $ScanButton.IsEnabled=$true
+        }
     }
 })
 
@@ -1314,21 +1368,44 @@ $OpenReportsButton.Add_Click({
 
 $script:PendingRepairState=Get-RBZPendingRepairState
 if($script:PendingRepairState){
-    $script:RepairVerificationPending=$true
-    $script:RestartRequired=$true
-    $ScanButton.Content='Verify Repairs'
-
     $performed=[string]$script:PendingRepairState.PerformedAt
     try{
         $performed=([datetime]$script:PendingRepairState.PerformedAt).ToString('dd MMM yyyy HH:mm')
     }catch{}
 
-    $RestartRequiredText.Text="Pending repair verification: $($script:PendingRepairState.ActionName) was performed $performed. Run Verify Repairs."
-    $RestartRequiredBanner.Visibility='Visible'
-    $ActionStatusText.Text="Previous restart-required repair detected: $($script:PendingRepairState.ActionName). Run Verify Repairs."
-    $StatusText.Text='Pending post-restart repair verification detected.'
+    $restartOccurred=Test-RBZRestartOccurred -State $script:PendingRepairState
+
+    if($restartOccurred -eq $false){
+        $script:RepairVerificationPending=$false
+        $script:RestartRequired=$true
+        $ScanButton.Content='Restart Required'
+        $ScanButton.IsEnabled=$false
+
+        $RestartRequiredText.Text="Restart still required: $($script:PendingRepairState.ActionName) was performed $performed. Restart Windows before running verification."
+        $RestartRequiredBanner.Visibility='Visible'
+        $ActionStatusText.Text="Restart required to complete: $($script:PendingRepairState.ActionName)."
+        $StatusText.Text='Pending repair detected on the same Windows boot. Restart Windows before verification.'
+    }else{
+        $script:RepairVerificationPending=$true
+        $script:RestartRequired=$false
+        $ScanButton.Content='Verify Repairs'
+        $ScanButton.IsEnabled=$true
+
+        if($restartOccurred -eq $true){
+            $RestartRequiredText.Text="Restart completed: $($script:PendingRepairState.ActionName) was performed $performed. Run Verify Repairs."
+            $ActionStatusText.Text="Post-restart verification ready: $($script:PendingRepairState.ActionName)."
+            $StatusText.Text='Windows restart detected. Pending repair is ready for verification.'
+        }else{
+            $RestartRequiredText.Text="Pending repair verification: $($script:PendingRepairState.ActionName) was performed $performed. Boot-time metadata is unavailable; run Verify Repairs."
+            $ActionStatusText.Text="Previous restart-required repair detected: $($script:PendingRepairState.ActionName). Run Verify Repairs."
+            $StatusText.Text='Legacy pending repair state detected. Verification is available.'
+        }
+
+        $RestartRequiredBanner.Visibility='Visible'
+    }
 }
 $window.ShowDialog()|Out-Null
+
 
 
 
